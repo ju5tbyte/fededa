@@ -1,0 +1,3 @@
+[submodule "external/MMCircuitEval"]
+	path = external/MMCircuitEval
+	url = https://github.com/cure-lab/MMCircuitEval.git
