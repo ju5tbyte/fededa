@@ -14,24 +14,29 @@ weights:
   bleu: 1.0    # BLEU score weight
   rouge: 1.0   # ROUGE score weight
   emb: 1.0     # Embedding similarity weight
-  llm: 0.0     # LLM-based scorer weight
+  llm: 2.0     # LLM-based scorer weight
 
 # Enable/disable API-based metrics (optional)
 # Set to false to run evaluation offline using only BLEU and ROUGE
 use_embedder: true     # OpenAI embedding similarity (requires API key)
-use_llm_scorer: false   # LLM-based answer scoring (requires API key)
+use_llm_scorer: true   # LLM-based answer scoring (requires API key)
 
 # Output configuration
 output:
   predictions_file: preds.json   # Filename for model predictions
   results_file: results.json     # Filename for evaluation results
 
+# Output directory configuration
+# Set to null to use Hydra's default timestamped directory
+# Set to a path (e.g., outputs/mmcircuiteval/2026-01-20/14-30-00) to reuse existing outputs
+output_dir: null  # null = use Hydra's timestamped dir, or provide explicit path
+
 # API configuration (only needed if use_embedder or use_llm_scorer is true)
 api:
   openai_api_key: ${oc.env:OPENAI_API_KEY,null}  # Read from environment or null
   openai_base_url: https://api.openai.com/v1
   embedding_model: text-embedding-3-large
-  llm_model: gpt-3.5-turbo
+  llm_model: gpt-4o
 
 # GPU configuration
 # Specify GPU device(s) to use for evaluation
@@ -47,3 +52,10 @@ seed: 42
 # Set max_samples to limit the number of datasets to evaluate (for quick testing)
 # Set to null or a large number to evaluate all datasets
 max_samples: null  # e.g., 5 to test with only 5 datasets
+
+# Execution mode configuration
+# Control which phases to run (useful for re-evaluation with different metrics)
+execution:
+  run_inference: true    # Phase 1: Generate model predictions
+  run_evaluation: true   # Phase 2: Compute evaluation metrics
+  run_results: true      # Phase 3: Display aggregated results

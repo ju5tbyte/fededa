@@ -10,6 +10,7 @@ Usage:
     python scripts/evaluate_mmcircuiteval.py evaluation.use_embedder=true
 """
 
+import json
 import logging
 import sys
 from pathlib import Path
@@ -128,7 +129,17 @@ def main(cfg: DictConfig) -> None:
     from hydra.core.hydra_config import HydraConfig
 
     hydra_cfg = HydraConfig.get()
-    output_dir = Path(hydra_cfg.runtime.output_dir)
+
+    # Allow overriding output directory for reusing existing outputs
+    if cfg.evaluation.get("output_dir") is not None:
+        output_dir = Path(cfg.evaluation.output_dir)
+        logger.info(f"Using specified output directory: {output_dir}")
+        # Create directory if it doesn't exist
+        output_dir.mkdir(parents=True, exist_ok=True)
+    else:
+        output_dir = Path(hydra_cfg.runtime.output_dir)
+        logger.info(f"Using Hydra output directory: {output_dir}")
+
     preds_path = output_dir / cfg.evaluation.output.predictions_file
     results_path = output_dir / cfg.evaluation.output.results_file
 
@@ -136,46 +147,93 @@ def main(cfg: DictConfig) -> None:
     logger.info(f"Predictions file: {preds_path}")
     logger.info(f"Results file: {results_path}")
 
-    # Run three-phase evaluation
-    logger.info("=" * 80)
-    logger.info(f"Phase 1: Running inference on field '{cfg.evaluation.field}'")
-    if cfg.evaluation.max_samples is not None:
-        logger.info(
-            f"Testing mode: Evaluating only {cfg.evaluation.max_samples} samples"
+    # Phase 1: Inference (conditional)
+    if cfg.evaluation.execution.run_inference:
+        logger.info("=" * 80)
+        logger.info(f"Phase 1: Running inference on field '{cfg.evaluation.field}'")
+        if cfg.evaluation.max_samples is not None:
+            logger.info(
+                f"Testing mode: Evaluating only {cfg.evaluation.max_samples} samples"
+            )
+        else:
+            logger.info("Full evaluation mode: Evaluating all samples")
+        logger.info("=" * 80)
+        preds = runner.runInference(
+            model,
+            cfg.evaluation.field,
+            str(preds_path),
+            cot=cfg.evaluation.cot,
+            max_samples=cfg.evaluation.max_samples,
         )
+        logger.info(f"Inference complete. Predictions saved to {preds_path}")
     else:
-        logger.info("Full evaluation mode: Evaluating all samples")
-    logger.info("=" * 80)
-    preds = runner.runInference(
-        model,
-        cfg.evaluation.field,
-        str(preds_path),
-        cot=cfg.evaluation.cot,
-        max_samples=cfg.evaluation.max_samples,
-    )
-    logger.info(f"Inference complete. Predictions saved to {preds_path}")
+        logger.info("=" * 80)
+        logger.info("Phase 1: Skipped (execution.run_inference=false)")
+        logger.info("=" * 80)
+        # Validate that predictions file exists
+        if not preds_path.exists():
+            error_msg = (
+                f"Predictions file not found: {preds_path}\n"
+                f"Cannot run evaluation without predictions. "
+                f"Please run inference first or provide a valid predictions file."
+            )
+            logger.error(error_msg)
+            raise FileNotFoundError(error_msg)
+
+        # Load existing predictions
+        logger.info(f"Loading existing predictions from {preds_path}")
+        with open(preds_path, "r") as f:
+            preds = json.load(f)
+        logger.info(f"Loaded {len(preds)} predictions")
+
+    # Phase 2: Evaluation (conditional)
+    if cfg.evaluation.execution.run_evaluation:
+        logger.info("=" * 80)
+        logger.info("Phase 2: Computing evaluation metrics")
+        logger.info("=" * 80)
+        logger.info(
+            f"Metrics: BLEU (weight={cfg.evaluation.weights.bleu}), "
+            f"ROUGE (weight={cfg.evaluation.weights.rouge}), "
+            f"Embedding (weight={cfg.evaluation.weights.emb}, enabled={cfg.evaluation.use_embedder}), "
+            f"LLM (weight={cfg.evaluation.weights.llm}, enabled={cfg.evaluation.use_llm_scorer})"
+        )
+        results = runner.runEvaluation(
+            preds, cfg.evaluation.field, evaluator, str(results_path)
+        )
+        logger.info(f"Evaluation complete. Results saved to {results_path}")
+    else:
+        logger.info("=" * 80)
+        logger.info("Phase 2: Skipped (execution.run_evaluation=false)")
+        logger.info("=" * 80)
+        # Validate that results file exists
+        if not results_path.exists():
+            error_msg = (
+                f"Results file not found: {results_path}\n"
+                f"Cannot display results without evaluation. "
+                f"Please run evaluation first or provide a valid results file."
+            )
+            logger.error(error_msg)
+            raise FileNotFoundError(error_msg)
+
+        # Load existing results
+        logger.info(f"Loading existing results from {results_path}")
+        with open(results_path, "r") as f:
+            results = json.load(f)
+        logger.info(f"Loaded results for {len(results)} questions")
+
+    # Phase 3: Display Results (conditional)
+    if cfg.evaluation.execution.run_results:
+        logger.info("=" * 80)
+        logger.info("Phase 3: Displaying results")
+        logger.info("=" * 80)
+        runner.showResults(results, cfg.evaluation.field)
+    else:
+        logger.info("=" * 80)
+        logger.info("Phase 3: Skipped (execution.run_results=false)")
+        logger.info("=" * 80)
 
     logger.info("=" * 80)
-    logger.info("Phase 2: Computing evaluation metrics")
-    logger.info("=" * 80)
-    logger.info(
-        f"Metrics: BLEU (weight={cfg.evaluation.weights.bleu}), "
-        f"ROUGE (weight={cfg.evaluation.weights.rouge}), "
-        f"Embedding (weight={cfg.evaluation.weights.emb}, enabled={cfg.evaluation.use_embedder}), "
-        f"LLM (weight={cfg.evaluation.weights.llm}, enabled={cfg.evaluation.use_llm_scorer})"
-    )
-    results = runner.runEvaluation(
-        preds, cfg.evaluation.field, evaluator, str(results_path)
-    )
-    logger.info(f"Evaluation complete. Results saved to {results_path}")
-
-    logger.info("=" * 80)
-    logger.info("Phase 3: Displaying results")
-    logger.info("=" * 80)
-    runner.showResults(results, cfg.evaluation.field)
-
-    logger.info("=" * 80)
-    logger.info(f"Evaluation complete. All outputs saved to {output_dir}")
+    logger.info(f"Evaluation workflow complete. All outputs in {output_dir}")
     logger.info("=" * 80)
 
 

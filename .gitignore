@@ -3,10 +3,11 @@
 .claude/
 .env
 .vscode/
-__pycache__/
 *.egg-info/
 venv/
 build/
 dist/
-__pycache__/
 fededa.zip
+**/__pycache__/
+__pycache__/
+**/*.pyc
