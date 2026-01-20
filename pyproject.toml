@@ -1,0 +1,39 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "fededa"
+version = "0.1.0"
+description = "FedEDA project"
+readme = "README.md"
+requires-python = ">=3.8"
+authors = [
+  { name="Junho Jeong", email="junh1127@snu.ac.kr" },
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+]
+
+dependencies = [
+    "numpy",
+    "torch",
+    "openai",
+    "hydra-core",
+    "omegaconf",
+    "python-dotenv",
+    "rouge",
+    "nltk",
+    "datasets",
+    "tqdm",
+    "Pillow",
+    "transformers",
+    "qwen-vl-utils",
+    "bitsandbytes",
+    "accelerate",
+    "flash-attn",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["src*"]

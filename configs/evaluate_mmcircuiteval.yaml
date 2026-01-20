@@ -1,0 +1,12 @@
+# Main configuration for MMCircuitEval benchmark evaluation
+# This file composes model and evaluation configurations
+
+defaults:
+  - model: qwen_vl_model
+  - evaluation: mmcircuiteval
+  - _self_
+
+# Hydra output directory configuration
+hydra:
+  run:
+    dir: outputs/mmcircuiteval/${now:%Y-%m-%d}/${now:%H-%M-%S}

@@ -1,0 +1,111 @@
+# Qwen Vision-Language Model Configuration
+# Supports Qwen3-VL series models for multimodal question answering
+
+name: QwenVLModel
+
+params:
+  # Model identifier from HuggingFace
+  # Options: Qwen/Qwen3-VL-2B-Instruct, Qwen/Qwen3-VL-4B-Instruct,
+  #          Qwen/Qwen3-VL-8B-Instruct, Qwen/Qwen3-VL-32B-Instruct
+  model_name: Qwen/Qwen3-VL-2B-Instruct
+
+  # Device configuration
+  # Can be overridden by evaluation.device or by setting gpu_ids below
+  # Format: cuda:0, cuda:1, etc.
+  device: cuda:0
+
+  # Model precision
+  # Options: float16, bfloat16, float32
+  torch_dtype: float16
+
+  # Attention implementation
+  # Options: flash_attention_2, sdpa, eager
+  attn_implementation: flash_attention_2
+
+  # Maximum number of new tokens to generate
+  max_new_tokens: 512
+
+  # Image resolution configuration
+  # Controls memory usage and processing speed during inference
+  # Resolution is measured in pixels (28x28 patches for Qwen3-VL)
+
+  # Minimum number of pixels for image processing
+  # Default: 256 * 28 * 28 = 200,704 pixels (~448x448 resolution)
+  # Lower values = faster processing but may lose fine details
+  min_pixels: 200704  # 256 * 28 * 28
+
+  # Maximum number of pixels for image processing
+  # Default: 1280 * 28 * 28 = 1,003,520 pixels (~1001x1001 resolution)
+  # Higher values = better quality but more memory usage
+  # Common settings:
+  #   - 768 * 28 * 28 = 602,112 (~776x776) - balanced
+  #   - 1280 * 28 * 28 = 1,003,520 (~1001x1001) - high quality (default)
+  #   - 256 * 28 * 28 = 200,704 (~448x448) - low memory
+  max_pixels: 1003520  # 1280 * 28 * 28
+
+  # Quantization configuration
+  # Reduces memory usage significantly:
+  #   - 8-bit: ~50% memory reduction (e.g., 16GB -> 8GB)
+  #   - 4-bit: ~75% memory reduction (e.g., 16GB -> 4GB)
+  # Note: Quantization may slightly reduce model accuracy
+  quantization:
+    # Enable quantization (set to true to enable)
+    # Set to true to reduce memory usage
+    enabled: true
+
+    # Quantization method
+    # Currently only 'bitsandbytes' is supported
+    # Future support: awq, gptq
+    method: bitsandbytes
+
+    # Bits for quantization
+    # Options: 4 (maximum memory savings), 8 (balanced)
+    # 8-bit is recommended for better quality, 4-bit for maximum memory savings
+    bits: 4
+
+    # ===== 4-bit quantization parameters =====
+    # Only used when bits=4 or load_in_4bit=true
+
+    # Compute dtype for 4-bit quantization
+    # Options: float16 (faster), bfloat16 (more stable), float32 (highest precision)
+    bnb_4bit_compute_dtype: float16
+
+    # Enable nested quantization for additional memory savings
+    # Recommended: true (saves ~0.4 bits per parameter)
+    bnb_4bit_use_double_quant: true
+
+    # Quantization type for 4-bit
+    # Options: nf4 (NormalFloat4, recommended), fp4 (Float4)
+    # nf4 is optimized for normally distributed weights
+    bnb_4bit_quant_type: nf4
+
+    # ===== Explicit loading modes =====
+    # These override the 'bits' parameter if set to true
+
+    # Load model in 8-bit mode
+    # Set to true for 8-bit quantization (overrides bits=8)
+    load_in_8bit: false
+
+    # Load model in 4-bit mode
+    # Set to true for 4-bit quantization (overrides bits=4)
+    load_in_4bit: false
+
+  # ===== Usage Examples =====
+  #
+  # Example 1: Enable 8-bit quantization (recommended for most cases)
+  #   quantization:
+  #     enabled: true
+  #     bits: 8
+  #
+  # Example 2: Enable 4-bit quantization with NormalFloat4
+  #   quantization:
+  #     enabled: true
+  #     bits: 4
+  #     bnb_4bit_compute_dtype: float16
+  #     bnb_4bit_use_double_quant: true
+  #     bnb_4bit_quant_type: nf4
+  #
+  # Example 3: Use explicit loading mode
+  #   quantization:
+  #     enabled: true
+  #     load_in_8bit: true

@@ -1,0 +1,49 @@
+# MMCircuitEval Benchmark Evaluation Configuration
+# This file configures evaluation parameters for the MMCircuitEval benchmark
+
+# Dataset field to evaluate
+# Options: general, spec, frontend, backend
+field: spec
+
+# Evaluation settings
+version: v1  # Prompt version: v1 (JSON format) or v2 (Markdown format)
+cot: false   # Enable Chain-of-Thought prompting
+
+# Metric weights for final score aggregation
+weights:
+  bleu: 1.0    # BLEU score weight
+  rouge: 1.0   # ROUGE score weight
+  emb: 1.0     # Embedding similarity weight
+  llm: 0.0     # LLM-based scorer weight
+
+# Enable/disable API-based metrics (optional)
+# Set to false to run evaluation offline using only BLEU and ROUGE
+use_embedder: true     # OpenAI embedding similarity (requires API key)
+use_llm_scorer: false   # LLM-based answer scoring (requires API key)
+
+# Output configuration
+output:
+  predictions_file: preds.json   # Filename for model predictions
+  results_file: results.json     # Filename for evaluation results
+
+# API configuration (only needed if use_embedder or use_llm_scorer is true)
+api:
+  openai_api_key: ${oc.env:OPENAI_API_KEY,null}  # Read from environment or null
+  openai_base_url: https://api.openai.com/v1
+  embedding_model: text-embedding-3-large
+  llm_model: gpt-3.5-turbo
+
+# GPU configuration
+# Specify GPU device(s) to use for evaluation
+# Single GPU: Set gpu_ids to a single integer (e.g., 0 for cuda:0)
+# Multiple GPUs: Set gpu_ids to a list [0, 1] for data parallelism (future support)
+# If gpu_ids is set, it overrides the device setting in model config
+gpu_ids: 4 # null uses default device from model config, or set to integer like 0, 1, 2, etc.
+
+# Reproducibility seed
+seed: 42
+
+# Testing configuration
+# Set max_samples to limit the number of datasets to evaluate (for quick testing)
+# Set to null or a large number to evaluate all datasets
+max_samples: null  # e.g., 5 to test with only 5 datasets
