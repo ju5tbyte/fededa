@@ -1,3 +1,9 @@
 [submodule "external/MMCircuitEval"]
 	path = external/MMCircuitEval
 	url = https://github.com/cure-lab/MMCircuitEval.git
+[submodule "external/ORD-QA"]
+	path = external/ORD-QA
+	url = https://github.com/lesliepy99/RAG-EDA.git
+[submodule "external/UniEval"]
+	path = external/UniEval
+	url = https://github.com/maszhongming/UniEval.git

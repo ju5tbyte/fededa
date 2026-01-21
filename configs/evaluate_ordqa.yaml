@@ -1,0 +1,12 @@
+# Main configuration for ORD-QA benchmark evaluation
+# This file composes model and evaluation configurations
+
+defaults:
+  - model: qwen3_model
+  - evaluation: ordqa
+  - _self_
+
+# Hydra output directory configuration
+hydra:
+  run:
+    dir: outputs/ordqa/${now:%Y-%m-%d}/${now:%H-%M-%S}

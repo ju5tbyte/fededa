@@ -32,6 +32,12 @@ dependencies = [
     "bitsandbytes",
     "accelerate",
     "flash-attn",
+    "sentencepiece!=0.1.92",
+    "protobuf",
+    "rouge-score",
+    "py7zr",
+    "evaluate",
+    "prettytable",
 ]
 
 [tool.setuptools.packages.find]

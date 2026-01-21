@@ -1,0 +1,45 @@
+# Qwen3 Text-Only Model Configuration
+# This file configures the Qwen3 model for text-based benchmarks like ORD-QA
+
+name: Qwen3Model
+
+params:
+  # HuggingFace model identifier
+  # Official Qwen3 models (released May 2025):
+  #   - Qwen/Qwen3-1.7B (1.7B parameter model)
+  #   - Qwen/Qwen3-4B (4B parameter model)
+  #   - Qwen/Qwen3-8B (8B parameter model)
+  # Note: Requires transformers>=4.51.0
+  model_name: Qwen/Qwen3-8B
+
+  # Device configuration
+  # Options: cuda:0, cuda:1, cpu
+  device: cuda:0
+
+  # Data type for model weights
+  # Options: float16, bfloat16, float32
+  torch_dtype: float16
+
+  # Attention implementation
+  # Options: sdpa (scaled dot-product attention), flash_attention_2
+  attn_implementation: sdpa
+
+  # Maximum number of tokens to generate
+  max_new_tokens: 512
+
+  # Thinking mode configuration (Qwen3 feature)
+  # false: Fast, efficient responses without reasoning overhead (fair comparison)
+  # true: Enables <think>...</think> reasoning blocks for complex tasks
+  enable_thinking: false
+
+  # Quantization configuration (optional)
+  # Set enabled to true to use quantization for reduced memory usage
+  quantization:
+    enabled: false
+    method: bitsandbytes  # Currently only bitsandbytes is supported
+    bits: 4               # 4 or 8 bit quantization
+    load_in_4bit: false
+    load_in_8bit: false
+    bnb_4bit_compute_dtype: float16
+    bnb_4bit_use_double_quant: true
+    bnb_4bit_quant_type: nf4
