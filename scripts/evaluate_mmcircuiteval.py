@@ -96,7 +96,6 @@ def main(cfg: DictConfig) -> None:
         rouge_weight=cfg.evaluation.weights.rouge,
         emb_weight=cfg.evaluation.weights.emb,
         llm_weight=cfg.evaluation.weights.llm,
-        captioner=None,  # No captioner needed for now, since we test for Qwen-VL only
     )
 
     hydra_cfg = HydraConfig.get()
