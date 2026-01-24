@@ -63,9 +63,7 @@ class Runner:
 
             # Validate required columns
             if reader.fieldnames is None:
-                raise ValueError(
-                    f"CSV file {dataset_path} has no header row"
-                )
+                raise ValueError(f"CSV file {dataset_path} has no header row")
 
             required_cols = {"Prompts", "Answers"}
             if not required_cols.issubset(set(reader.fieldnames)):
@@ -74,11 +72,20 @@ class Runner:
                     f"but found {set(reader.fieldnames)}"
                 )
 
-            for idx, row in enumerate(reader):
+            for row in reader:
+                # Skip empty rows where both Prompts and Answers are empty
+                question = row["Prompts"].strip()
+                answer = row["Answers"].strip()
+
+                if not question and not answer:
+                    continue
+
                 sample = {
-                    "id": idx,
-                    "question": row["Prompts"].strip(),
-                    "answer": row["Answers"].strip(),
+                    "id": len(
+                        data
+                    ),  # Use length of data list for sequential IDs
+                    "question": question,
+                    "answer": answer,
                 }
                 data.append(sample)
 
@@ -95,9 +102,10 @@ class Runner:
             Formatted prompt string ready for model inference.
         """
         system_prompt = (
-            "You are an expert in Electronic Design Automation (EDA) tools.\n"
-            "Answer the following question clearly and accurately based on "
-            "your knowledge of EDA tools and workflows.\n\n"
+            "You are an expert in Electronic Design Automation (EDA), specifically specializing "
+            "in the OpenROAD tool and OpenROAD-flow-scripts.\n"
+            "Answer the following question "
+            "accurately based on your knowledge of physical design automation workflows.\n\n"
         )
         system_prompt += f"Question: {question}\n"
         system_prompt += "Answer:"
