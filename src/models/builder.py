@@ -1,22 +1,30 @@
+"""Model factory for building model instances from configuration.
+
+This module provides a registry pattern for instantiating models based on
+configuration. New models should be registered in MODEL_REGISTRY.
+"""
+
+from typing import Union
+
 from omegaconf import DictConfig
 
 from src.models.qwen3_model import Qwen3Model
 from src.models.qwen_vl_model import QwenVLModel
 
-# Registry mapping model names to their corresponding classes.
 MODEL_REGISTRY = {
     "QwenVLModel": QwenVLModel,
     "Qwen3Model": Qwen3Model,
 }
 
 
-def build_model(model_cfg: DictConfig):
-    """Builds and returns a model instance based on the provided configuration.
+def build_model(model_cfg: DictConfig) -> Union[QwenVLModel, Qwen3Model]:
+    """Build and return a model instance from configuration.
 
     Args:
-        model_cfg (DictConfig): Configuration containing model name and parameters.
+        model_cfg: Configuration containing model name and parameters.
 
-    Returns: Instantiated model object.
+    Returns:
+        Instantiated model object.
 
     Raises:
         ValueError: If the specified model name is not found in the registry.

@@ -1,27 +1,18 @@
-"""Multi-metric evaluator for MMCircuitEval benchmark.
-
-This module provides an evaluator that computes BLEU, ROUGE, embedding similarity,
-and LLM-based scores for model predictions. API-based metrics (embedding, LLM)
-are optional and can be disabled via configuration.
-"""
+"""Evaluator for MMCircuitEval."""
 
 import logging
-from typing import Optional
+from typing import Callable, Optional
 
 import numpy as np
 import torch
 from nltk.translate.bleu_score import SmoothingFunction, sentence_bleu
 from rouge import Rouge
 
-# Setup logger (Hydra will configure file handlers automatically)
 logger = logging.getLogger(__name__)
 
 
 class Evaluator:
-    """Multi-metric evaluator for MMCircuitEval benchmark.
-
-    Computes BLEU, ROUGE, embedding similarity, and LLM-based scores.
-    API-based metrics (embedding, LLM) are optional and return 0.0 when disabled.
+    """Evaluator for MMCircuitEval benchmark.
 
     Attributes:
         llm_scorer: Optional LLM scorer instance for answer quality evaluation.
@@ -31,7 +22,9 @@ class Evaluator:
     """
 
     def __init__(
-        self, llm_scorer: Optional[object] = None, embedder: Optional[object] = None
+        self,
+        llm_scorer: Optional[Callable[[str, str], float]] = None,
+        embedder: Optional[Callable[[str], torch.Tensor | list[float]]] = None,
     ):
         """Initialize the evaluator.
 
@@ -71,9 +64,7 @@ class Evaluator:
         }
 
     def BLEUScore(self, pred: str, gt: str) -> float:
-        """Compute sentence-level BLEU score.
-
-        Uses 4-gram BLEU with uniform weights and smoothing for edge cases.
+        """Compute sentence-level BLEU score. (4-gram BLEU with uniform weights)
 
         Args:
             pred: Predicted text.
@@ -91,9 +82,7 @@ class Evaluator:
         return bleu_score
 
     def RougeScore(self, pred: str, gt: str) -> float:
-        """Compute average ROUGE score.
-
-        Computes ROUGE-1, ROUGE-2, and ROUGE-L F1 scores and returns their average.
+        """Compute average ROUGE score. (ROUGE-1, ROUGE-2, and ROUGE-L averaged)
 
         Args:
             pred: Predicted text.
@@ -109,14 +98,13 @@ class Evaluator:
             rougel_score = rouge_score[0]["rouge-l"]["f"]
             return (rouge1_score + rouge2_score + rougel_score) / 3
         except RecursionError as e:
-            logger.warning(f"ROUGE computation failed with RecursionError: {e}")
+            logger.warning(
+                "ROUGE computation failed with RecursionError: %s", e
+            )
             return 0.0
 
     def embScore(self, pred: str, gt: str) -> float:
         """Compute embedding-based semantic similarity score.
-
-        Uses the embedder to convert texts to embeddings and computes
-        cosine similarity between them.
 
         Args:
             pred: Predicted text.
@@ -128,15 +116,17 @@ class Evaluator:
         Raises:
             AttributeError: If embedder is None.
         """
+        if self.embedder is None:
+            raise AttributeError(
+                "Embedder is not set for embedding score computation."
+            )
+
         pred_emb = self.embedder(pred)
         gt_emb = self.embedder(gt)
-        return self.cosSim(pred_emb, gt_emb)
+        return self._cosSim(pred_emb, gt_emb)
 
     def llmScore(self, pred: str, gt: str) -> float:
         """Compute LLM-based answer quality score.
-
-        Uses an LLM to evaluate the quality of the predicted answer
-        against the ground truth.
 
         Args:
             pred: Predicted text.
@@ -148,10 +138,16 @@ class Evaluator:
         Raises:
             AttributeError: If llm_scorer is None.
         """
+        if self.llm_scorer is None:
+            raise AttributeError(
+                "LLM scorer is not set for LLM-based score computation."
+            )
         return self.llm_scorer(pred, gt)
 
-    def cosSim(
-        self, vector1: torch.Tensor | list[float], vector2: torch.Tensor | list[float]
+    def _cosSim(
+        self,
+        vector1: torch.Tensor | list[float],
+        vector2: torch.Tensor | list[float],
     ) -> float:
         """Compute cosine similarity between two vectors.
 
@@ -164,17 +160,14 @@ class Evaluator:
         Returns:
             Cosine similarity in range [-1, 1]. Returns 0.0 if either vector has zero magnitude.
         """
-        # Convert tensors to lists if needed
         if isinstance(vector1, torch.Tensor):
             vector1 = vector1.cpu().tolist()
         if isinstance(vector2, torch.Tensor):
             vector2 = vector2.cpu().tolist()
 
-        # Convert to numpy arrays and flatten to 1D
         vector1 = np.array(vector1).flatten()
         vector2 = np.array(vector2).flatten()
 
-        # Compute cosine similarity
         dot_product = np.dot(vector1, vector2)
         magnitude1 = np.linalg.norm(vector1)
         magnitude2 = np.linalg.norm(vector2)

@@ -1,61 +1,35 @@
-# MMCircuitEval Benchmark Evaluation Configuration
-# This file configures evaluation parameters for the MMCircuitEval benchmark
-
-# Dataset field to evaluate
 # Options: general, spec, frontend, backend
 field: spec
 
-# Evaluation settings
-version: v1  # Prompt version: v1 (JSON format) or v2 (Markdown format)
-cot: false   # Enable Chain-of-Thought prompting
+version: v1  # Options: v1 (JSON), v2 (Markdown)
+cot: false
 
-# Metric weights for final score aggregation
 weights:
-  bleu: 1.0    # BLEU score weight
-  rouge: 1.0   # ROUGE score weight
-  emb: 1.0     # Embedding similarity weight
-  llm: 2.0     # LLM-based scorer weight
+  bleu: 1.0
+  rouge: 1.0
+  emb: 1.0
+  llm: 2.0
 
-# Enable/disable API-based metrics (optional)
-# Set to false to run evaluation offline using only BLEU and ROUGE
-use_embedder: true     # OpenAI embedding similarity (requires API key)
-use_llm_scorer: true   # LLM-based answer scoring (requires API key)
+use_embedder: true
+use_llm_scorer: true
 
-# Output configuration
 output:
-  predictions_file: preds.json   # Filename for model predictions
-  results_file: results.json     # Filename for evaluation results
+  predictions_file: preds.json
+  results_file: results.json
 
-# Output directory configuration
-# Set to null to use Hydra's default timestamped directory
-# Set to a path (e.g., outputs/mmcircuiteval/2026-01-20/14-30-00) to reuse existing outputs
-output_dir: null  # null = use Hydra's timestamped dir, or provide explicit path
+output_dir: null
 
-# API configuration (only needed if use_embedder or use_llm_scorer is true)
 api:
-  openai_api_key: ${oc.env:OPENAI_API_KEY,null}  # Read from environment or null
+  openai_api_key: ${oc.env:OPENAI_API_KEY,null}
   openai_base_url: https://api.openai.com/v1
   embedding_model: text-embedding-3-large
   llm_model: gpt-4o
 
-# GPU configuration
-# Specify GPU device(s) to use for evaluation
-# Single GPU: Set gpu_ids to a single integer (e.g., 0 for cuda:0)
-# Multiple GPUs: Set gpu_ids to a list [0, 1] for data parallelism (future support)
-# If gpu_ids is set, it overrides the device setting in model config
-gpu_ids: 4 # null uses default device from model config, or set to integer like 0, 1, 2, etc.
-
-# Reproducibility seed
+gpu_id: 4
 seed: 42
+max_samples: null
 
-# Testing configuration
-# Set max_samples to limit the number of datasets to evaluate (for quick testing)
-# Set to null or a large number to evaluate all datasets
-max_samples: null  # e.g., 5 to test with only 5 datasets
-
-# Execution mode configuration
-# Control which phases to run (useful for re-evaluation with different metrics)
 execution:
-  run_inference: true    # Phase 1: Generate model predictions
-  run_evaluation: true   # Phase 2: Compute evaluation metrics
-  run_results: true      # Phase 3: Display aggregated results
+  run_inference: true
+  run_evaluation: true
+  run_results: true

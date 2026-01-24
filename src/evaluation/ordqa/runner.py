@@ -1,8 +1,4 @@
-"""Runner for ORD-QA benchmark evaluation orchestration.
-
-This module provides the Runner class that orchestrates the ORD-QA evaluation
-process including data loading, inference, evaluation, and result reporting.
-"""
+"""Runner for ORD-QA benchmark evaluation."""
 
 import json
 import logging
@@ -11,15 +7,11 @@ from typing import Optional
 
 from tqdm import tqdm
 
-# Setup logger (Hydra will configure file handlers automatically)
 logger = logging.getLogger(__name__)
 
 
 class Runner:
     """Runner for ORD-QA benchmark evaluation.
-
-    This class orchestrates the evaluation workflow: loading data, running
-    inference, computing metrics, and displaying results.
 
     Attributes:
         bleu_weight (float): Weight for BLEU metric in final score.
@@ -70,21 +62,20 @@ class Runner:
                     data.append(sample)
                 except json.JSONDecodeError as e:
                     logger.error(
-                        f"Failed to parse line {line_num} in {dataset_path}: {e}"
+                        "Failed to parse line %d in %s: %s",
+                        line_num,
+                        dataset_path,
+                        e,
                     )
                     raise
 
-        logger.info(f"Loaded {len(data)} samples from {dataset_path}")
+        logger.info("Loaded %d samples from %s", len(data), dataset_path)
         return data
 
     def build_prompt(
         self, question: str, reference_content: Optional[list[str]] = None
     ) -> str:
-        """Build prompt for model inference.
-
-        This method constructs the prompt following the format shown in Figure 7
-        of the ORD-QA paper. The prompt includes a system instruction, the question,
-        and optionally the related reference documents.
+        """Build prompt for model inference. (following the prompt in original paper)
 
         Args:
             question: The question to answer.
@@ -100,7 +91,6 @@ class Runner:
         )
 
         if reference_content is not None:
-            # RAG-style prompt with references
             system_prompt += (
                 "Now given the user question and the related reference, you are "
                 "required to answer the question referring to the provided reference.\n"
@@ -118,7 +108,6 @@ class Runner:
                 system_prompt += f"Doc{i}: {ref}\n"
             system_prompt += "Answer:"
         else:
-            # Knowledge-only prompt without references
             system_prompt += (
                 "Now given the user question, you are required to answer the question "
                 "based on your knowledge of EDA tools.\n\n"
@@ -154,37 +143,34 @@ class Runner:
         Raises:
             FileNotFoundError: If dataset file does not exist.
         """
-        # Load dataset
         data = self.load_dataset(dataset_path)
 
-        # Limit samples if max_samples is specified
+        # Select data if max_samples is specified
         if max_samples is not None and max_samples > 0:
             data = data[: min(max_samples, len(data))]
-            logger.info(f"Limited to {len(data)} samples for testing")
+            logger.info("Limited to %d samples for testing", len(data))
 
-        # Load existing predictions if available
         preds = {}
         out_path = Path(out_path)
         if out_path.exists():
             with open(out_path, "r", encoding="utf-8") as f:
                 preds = json.load(f)
             logger.info(
-                f"Loaded {len(preds)} existing predictions from {out_path}"
+                "Loaded %d existing predictions from %s", len(preds), out_path
             )
 
-        # Run inference
-        logger.info(f"Starting inference on {len(data)} samples")
-        logger.info(f"Using reference: {use_reference}")
+        logger.info("Starting inference on %d samples", len(data))
+        logger.info("Using reference: %s", use_reference)
 
         for sample in tqdm(data, desc="Running inference"):
             sample_id = str(sample["id"])
-
-            # Skip if already processed
             if (
                 sample_id in preds
                 and preds[sample_id].get("prediction") is not None
             ):
-                logger.debug(f"Skipping sample {sample_id} (already processed)")
+                logger.debug(
+                    "Skipping sample %s (already processed)", sample_id
+                )
                 continue
 
             # Build prompt
@@ -194,31 +180,31 @@ class Runner:
             )
             prompt = self.build_prompt(question, reference_content)
 
-            # Run model inference
             try:
-                # For text-only models, pass empty images list
-                raw_output = model(prompt, imgs=[])
+                raw_output = model(prompt)
                 prediction = raw_output
             except (TypeError, IndexError, ValueError) as e:
                 logger.warning(
-                    f"Model inference failed for sample {sample_id}: "
-                    f"{type(e).__name__}: {e}"
+                    "Model inference failed for sample %s: %s: %s",
+                    sample_id,
+                    type(e).__name__,
+                    e,
                 )
                 raw_output = None
                 prediction = None
 
-            # Save prediction
             preds[sample_id] = {
                 "prediction": prediction,
                 "raw_output": raw_output,
             }
 
-            # Save incrementally to avoid data loss
             with open(out_path, "w", encoding="utf-8") as f:
                 json.dump(preds, f, indent=2, ensure_ascii=False)
 
         logger.info(
-            f"Inference complete: {len(preds)} predictions saved to {out_path}"
+            "Inference complete: %d predictions saved to %s",
+            len(preds),
+            out_path,
         )
         return preds
 
@@ -245,20 +231,18 @@ class Runner:
             FileNotFoundError: If dataset file does not exist.
             KeyError: If prediction is missing for any sample.
         """
-        # Load dataset
         data = self.load_dataset(dataset_path)
         data_dict = {str(sample["id"]): sample for sample in data}
 
-        # Run evaluation
         results = {}
-        logger.info(f"Starting evaluation on {len(preds)} predictions")
+        logger.info("Starting evaluation on %d predictions", len(preds))
 
         for sample_id, pred_dict in tqdm(
             preds.items(), desc="Running evaluation"
         ):
             if sample_id not in data_dict:
                 logger.warning(
-                    f"Sample {sample_id} not found in dataset, skipping"
+                    "Sample %s not found in dataset, skipping", sample_id
                 )
                 continue
 
@@ -268,10 +252,10 @@ class Runner:
             question = sample["question"]
             reference_content = sample.get("reference_content")
 
-            # Skip if prediction is None (inference failed)
             if prediction is None:
                 logger.warning(
-                    f"Skipping evaluation for sample {sample_id} (prediction is None)"
+                    "Skipping evaluation for sample %s (prediction is None)",
+                    sample_id,
                 )
                 results[sample_id] = {
                     "bleu": 0.0,
@@ -280,20 +264,16 @@ class Runner:
                 }
                 continue
 
-            # Set context for UniEval (if evaluator supports it)
-            if hasattr(evaluator, "set_context"):
-                evaluator.set_context(question, reference_content)
-
-            # Compute metrics
-            scores = evaluator(prediction, ground_truth)
+            scores = evaluator(
+                prediction, ground_truth, question, reference_content
+            )
             results[sample_id] = scores
 
-        # Save results
         out_path = Path(out_path)
         with open(out_path, "w", encoding="utf-8") as f:
             json.dump(results, f, indent=2, ensure_ascii=False)
 
-        logger.info(f"Evaluation complete: Results saved to {out_path}")
+        logger.info("Evaluation complete: Results saved to %s", out_path)
         return results
 
     def show_results(
@@ -313,11 +293,9 @@ class Runner:
                 - 'unieval': Average UniEval score
                 - 'by_type': Scores grouped by question type (functionality, gui&installation&test)
         """
-        # Load dataset for metadata
         data = self.load_dataset(dataset_path)
         data_dict = {str(sample["id"]): sample for sample in data}
 
-        # Aggregate scores
         all_bleu = []
         all_rouge_l = []
         all_unieval = []
@@ -337,7 +315,6 @@ class Runner:
             rouge_l = scores["rouge_l"]
             unieval = scores["unieval"]
 
-            # Compute weighted score
             total_weight = (
                 self.bleu_weight + self.rouge_l_weight + self.unieval_weight
             )
@@ -352,12 +329,10 @@ class Runner:
             all_unieval.append(unieval)
             all_weighted.append(weighted)
 
-            # Group by type
             if question_type not in type_scores:
                 type_scores[question_type] = []
             type_scores[question_type].append(weighted)
 
-        # Calculate averages
         avg_bleu = sum(all_bleu) / len(all_bleu) if all_bleu else 0.0
         avg_rouge_l = (
             sum(all_rouge_l) / len(all_rouge_l) if all_rouge_l else 0.0
@@ -374,19 +349,18 @@ class Runner:
         for qtype, scores in type_scores.items():
             type_averages[qtype] = sum(scores) / len(scores) if scores else 0.0
 
-        # Log results
         logger.info("=" * 80)
         logger.info("ORD-QA EVALUATION RESULTS")
         logger.info("=" * 80)
-        logger.info(f"Number of samples: {len(results)}")
-        logger.info(f"Overall Score: {avg_weighted * 100:.2f}")
-        logger.info(f"BLEU Score: {avg_bleu * 100:.2f}")
-        logger.info(f"ROUGE-L Score: {avg_rouge_l * 100:.2f}")
-        logger.info(f"UniEval Score: {avg_unieval * 100:.2f}")
+        logger.info("Number of samples: %d", len(results))
+        logger.info("Overall Score: %.2f", avg_weighted * 100)
+        logger.info("BLEU Score: %.2f", avg_bleu * 100)
+        logger.info("ROUGE-L Score: %.2f", avg_rouge_l * 100)
+        logger.info("UniEval Score: %.2f", avg_unieval * 100)
         logger.info("-" * 80)
         logger.info("Scores by Question Type:")
         for qtype, score in sorted(type_averages.items()):
-            logger.info(f"  {qtype}: {score * 100:.2f}")
+            logger.info("  %s: %.2f", qtype, score * 100)
         logger.info("=" * 80)
 
         return {

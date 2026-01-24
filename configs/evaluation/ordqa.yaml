@@ -1,59 +1,32 @@
-# ORD-QA Benchmark Evaluation Configuration
-# This file configures evaluation parameters for the ORD-QA benchmark
-
-# Dataset path
 dataset_path: external/ORD-QA/benchmark/ORD-QA.jsonl
+use_reference: true
 
-# Evaluation settings
-use_reference: true  # Whether to include reference documents in prompts (RAG-style)
-
-# Metric weights for final score aggregation
 weights:
-  bleu: 1.0       # BLEU score weight
-  rouge_l: 1.0    # ROUGE-L score weight
-  unieval: 1.0    # UniEval score weight
+  bleu: 1.0
+  rouge_l: 1.0
+  unieval: 1.0
 
-# Enable/disable metrics
-use_unieval: true  # Set to true to use UniEval metric (requires additional setup)
+use_unieval: true
 
-# UniEval configuration (only used if use_unieval is true)
 unieval:
-  max_length: 1024  # Maximum sequence length for UniEval model
-  cache_dir: null   # Optional cache directory for model weights (null = default)
+  max_length: 1024
+  cache_dir: null
   dimensions:
-    - coherence    # Logical structure of the answer
-    - consistency  # Factual consistency with references
-    - fluency      # Grammatical correctness
-    - relevance    # Relevance to the question
+    - coherence
+    - consistency
+    - fluency
+    - relevance
 
-# Output configuration
 output:
-  predictions_file: preds.json   # Filename for model predictions
-  results_file: results.json     # Filename for evaluation results
+  predictions_file: preds.json
+  results_file: results.json
 
-# Output directory configuration
-# Set to null to use Hydra's default timestamped directory
-# Set to a path (e.g., outputs/ordqa/2026-01-20/14-30-00) to reuse existing outputs
-output_dir: null  # null = use Hydra's timestamped dir, or provide explicit path
-
-# GPU configuration
-# Specify GPU device(s) to use for evaluation
-# Single GPU: Set gpu_ids to a single integer (e.g., 0 for cuda:0)
-# Multiple GPUs: Set gpu_ids to a list [0, 1] for data parallelism (future support)
-# If gpu_ids is set, it overrides the device setting in model config
-gpu_ids: null  # null uses default device from model config, or set to integer like 0, 1, 2, etc.
-
-# Reproducibility seed
+output_dir: null
+gpu_id: null
 seed: 42
+max_samples: null
 
-# Testing configuration
-# Set max_samples to limit the number of samples to evaluate (for quick testing)
-# Set to null or a large number to evaluate all samples
-max_samples: null  # e.g., 5 to test with only 5 samples
-
-# Execution mode configuration
-# Control which phases to run (useful for re-evaluation with different metrics)
 execution:
-  run_inference: true    # Phase 1: Generate model predictions
-  run_evaluation: true   # Phase 2: Compute evaluation metrics
-  run_results: true      # Phase 3: Display aggregated results
+  run_inference: true
+  run_evaluation: true
+  run_results: true

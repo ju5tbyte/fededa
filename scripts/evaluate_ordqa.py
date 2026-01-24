@@ -1,14 +1,8 @@
 """ORD-QA benchmark evaluation script.
 
-This script runs end-to-end evaluation of language models on the ORD-QA
-benchmark. It uses Hydra for configuration management and supports optional
-UniEval metric.
-
 Usage:
     python scripts/evaluate_ordqa.py
-    python scripts/evaluate_ordqa.py evaluation.use_reference=false
-    python scripts/evaluate_ordqa.py evaluation.use_unieval=true
-    python scripts/evaluate_ordqa.py model=qwen3_model
+    python scripts/evaluate_ordqa.py model=qwen3_model model.params.model_name=Qwen/Qwen3-8B evaluation.gpu_id=4
 """
 
 import json
@@ -17,6 +11,7 @@ from pathlib import Path
 
 import hydra
 from dotenv import load_dotenv
+from hydra.core.hydra_config import HydraConfig
 from omegaconf import DictConfig
 
 from src.evaluation.ordqa.evaluator import Evaluator
@@ -24,10 +19,8 @@ from src.evaluation.ordqa.runner import Runner
 from src.models.builder import build_model
 from src.utils.set_seed import set_seed
 
-# Load environment variables from .env file
 load_dotenv()
 
-# Setup logger
 logger = logging.getLogger(__name__)
 
 
@@ -39,7 +32,6 @@ logger = logging.getLogger(__name__)
 def main(cfg: DictConfig) -> None:
     """Run ORD-QA benchmark evaluation.
 
-    This function orchestrates the three-phase evaluation process:
     1. Inference: Generate model predictions for all questions
     2. Evaluation: Compute metrics (BLEU, ROUGE-L, optional UniEval)
     3. Results: Display aggregated scores by question type
@@ -47,45 +39,33 @@ def main(cfg: DictConfig) -> None:
     Args:
         cfg: Hydra configuration containing model and evaluation settings.
     """
-    # Setup reproducibility
     set_seed(cfg.evaluation.seed)
 
     logger.info("=" * 80)
     logger.info("ORD-QA Benchmark Evaluation")
     logger.info("=" * 80)
 
-    # GPU configuration: Override device if gpu_ids is specified
-    if cfg.evaluation.get("gpu_ids") is not None:
-        if isinstance(cfg.evaluation.gpu_ids, int):
-            device = f"cuda:{cfg.evaluation.gpu_ids}"
-            logger.info(f"GPU configuration: Using GPU {cfg.evaluation.gpu_ids}")
-        else:
-            # For future multi-GPU support
-            logger.warning(
-                f"Multi-GPU configuration detected but not yet supported. "
-                f"Using first GPU: {cfg.evaluation.gpu_ids[0]}"
-            )
-            device = f"cuda:{cfg.evaluation.gpu_ids[0]}"
-        # Override model device configuration
+    gpu_id = cfg.evaluation.get("gpu_id")
+
+    if gpu_id is not None:
+        if not isinstance(gpu_id, int):
+            raise TypeError(f"gpu_id must be int, got {type(gpu_id).__name__}")
+        device = f"cuda:{gpu_id}"
+        logger.info("GPU configuration: Using GPU %d", gpu_id)
         cfg.model.params.device = device
     else:
-        device = cfg.model.params.device
-        logger.info(f"GPU configuration: Using default device from model config")
+        device = cfg.model.params.get("device", "cpu")
+        logger.info("GPU configuration: Using default device '%s'", device)
 
-    # Build model from registry
-    logger.info(f"Building model: {cfg.model.name}")
-    logger.info(f"  Model: {cfg.model.params.model_name}")
-    logger.info(f"  Device: {device}")
+    logger.info("Building model: %s", cfg.model.name)
+    logger.info("  Model: %s", cfg.model.params.model_name)
+    logger.info("  Device: %s", device)
     model = build_model(cfg.model)
 
-    # Conditionally create UniEval scorer
+    # (Optional) Create UniEval scorer
     unieval_scorer = None
-
     if cfg.evaluation.use_unieval:
-        logger.info("=" * 80)
         logger.info("Initializing UniEval scorer")
-        logger.info("=" * 80)
-
         try:
             from src.evaluation.ordqa.unieval_scorer import UniEvalScorer
 
@@ -96,68 +76,64 @@ def main(cfg: DictConfig) -> None:
                 use_reference=cfg.evaluation.use_reference,
                 cache_dir=cfg.evaluation.unieval.get("cache_dir"),
             )
-            logger.info("UniEval scorer initialized successfully")
+            logger.info(
+                "  UniEval dimensions: %s", cfg.evaluation.unieval.dimensions
+            )
         except Exception as e:
-            logger.error(f"Failed to initialize UniEval scorer: {e}")
+            logger.error("Failed to initialize UniEval scorer: %s", e)
             logger.warning(
                 "Continuing without UniEval. UniEval scores will default to 0.0"
             )
             unieval_scorer = None
 
-    # Create evaluator
     evaluator = Evaluator(unieval_scorer=unieval_scorer)
-
-    # Create runner
     runner = Runner(
         bleu_weight=cfg.evaluation.weights.bleu,
         rouge_l_weight=cfg.evaluation.weights.rouge_l,
         unieval_weight=cfg.evaluation.weights.unieval,
     )
 
-    # Define output paths
-    from hydra.core.hydra_config import HydraConfig
-
     hydra_cfg = HydraConfig.get()
 
     # Allow overriding output directory for reusing existing outputs
     if cfg.evaluation.get("output_dir") is not None:
         output_dir = Path(cfg.evaluation.output_dir)
-        logger.info(f"Using specified output directory: {output_dir}")
-        # Create directory if it doesn't exist
+        logger.info("Using specified output directory: %s", output_dir)
         output_dir.mkdir(parents=True, exist_ok=True)
     else:
         output_dir = Path(hydra_cfg.runtime.output_dir)
-        logger.info(f"Using Hydra output directory: {output_dir}")
+        logger.info("Using Hydra output directory: %s", output_dir)
 
     preds_path = output_dir / cfg.evaluation.output.predictions_file
     results_path = output_dir / cfg.evaluation.output.results_file
 
-    logger.info(f"Output directory: {output_dir}")
-    logger.info(f"Predictions file: {preds_path}")
-    logger.info(f"Results file: {results_path}")
-
-    # Dataset path (relative to project root)
+    # Convert dataset path to absolute if needed
     dataset_path = Path(cfg.evaluation.dataset_path)
     if not dataset_path.is_absolute():
-        # Convert to absolute path relative to project root
         project_root = Path(__file__).parent.parent
         dataset_path = project_root / dataset_path
 
-    logger.info(f"Dataset path: {dataset_path}")
+    logger.info("Output directory: %s", output_dir)
+    logger.info("Predictions file: %s", preds_path)
+    logger.info("Results file: %s", results_path)
+    logger.info("Dataset path: %s", dataset_path)
 
-    # Phase 1: Inference (conditional)
+    # Phase 1: Inference
     if cfg.evaluation.execution.run_inference:
         logger.info("=" * 80)
         logger.info("Phase 1: Running inference on ORD-QA dataset")
-        logger.info(f"Using reference documents: {cfg.evaluation.use_reference}")
+        logger.info(
+            "Using reference documents: %s", cfg.evaluation.use_reference
+        )
+        # max_samples=None means evaluate all samples, else limit to specified number (for testing)
         if cfg.evaluation.max_samples is not None:
             logger.info(
-                f"Testing mode: Evaluating only {cfg.evaluation.max_samples} samples"
+                "Testing mode: Evaluating only %d samples",
+                cfg.evaluation.max_samples,
             )
         else:
             logger.info("Full evaluation mode: Evaluating all samples")
         logger.info("=" * 80)
-
         preds = runner.run_inference(
             model,
             str(dataset_path),
@@ -165,7 +141,7 @@ def main(cfg: DictConfig) -> None:
             use_reference=cfg.evaluation.use_reference,
             max_samples=cfg.evaluation.max_samples,
         )
-        logger.info(f"Inference complete. Predictions saved to {preds_path}")
+        logger.info("Inference complete. Predictions saved to %s", preds_path)
     else:
         logger.info("=" * 80)
         logger.info("Phase 1: Skipped (execution.run_inference=false)")
@@ -181,12 +157,12 @@ def main(cfg: DictConfig) -> None:
             raise FileNotFoundError(error_msg)
 
         # Load existing predictions
-        logger.info(f"Loading existing predictions from {preds_path}")
+        logger.info("Loading existing predictions from %s", preds_path)
         with open(preds_path, "r", encoding="utf-8") as f:
             preds = json.load(f)
-        logger.info(f"Loaded {len(preds)} predictions")
+        logger.info("Loaded %d predictions", len(preds))
 
-    # Phase 2: Evaluation (conditional)
+    # Phase 2: Evaluation
     if cfg.evaluation.execution.run_evaluation:
         logger.info("=" * 80)
         logger.info("Phase 2: Computing evaluation metrics")
@@ -194,14 +170,12 @@ def main(cfg: DictConfig) -> None:
         logger.info(
             f"Metrics: BLEU (weight={cfg.evaluation.weights.bleu}), "
             f"ROUGE-L (weight={cfg.evaluation.weights.rouge_l}), "
-            f"UniEval (weight={cfg.evaluation.weights.unieval}, "
-            f"enabled={cfg.evaluation.use_unieval})"
+            f"UniEval (weight={cfg.evaluation.weights.unieval}, enabled={cfg.evaluation.use_unieval})"
         )
-
         results = runner.run_evaluation(
             preds, str(dataset_path), evaluator, str(results_path)
         )
-        logger.info(f"Evaluation complete. Results saved to {results_path}")
+        logger.info("Evaluation complete. Results saved to %s", results_path)
     else:
         logger.info("=" * 80)
         logger.info("Phase 2: Skipped (execution.run_evaluation=false)")
@@ -217,24 +191,24 @@ def main(cfg: DictConfig) -> None:
             raise FileNotFoundError(error_msg)
 
         # Load existing results
-        logger.info(f"Loading existing results from {results_path}")
+        logger.info("Loading existing results from %s", results_path)
         with open(results_path, "r", encoding="utf-8") as f:
             results = json.load(f)
-        logger.info(f"Loaded results for {len(results)} questions")
+        logger.info("Loaded results for %d questions", len(results))
 
-    # Phase 3: Display Results (conditional)
+    # Phase 3: Display Results
     if cfg.evaluation.execution.run_results:
         logger.info("=" * 80)
         logger.info("Phase 3: Displaying results")
         logger.info("=" * 80)
-        aggregated_scores = runner.show_results(results, str(dataset_path))
+        runner.show_results(results, str(dataset_path))
     else:
         logger.info("=" * 80)
         logger.info("Phase 3: Skipped (execution.run_results=false)")
         logger.info("=" * 80)
 
     logger.info("=" * 80)
-    logger.info(f"Evaluation workflow complete. All outputs in {output_dir}")
+    logger.info("Evaluation workflow complete. All outputs in %s", output_dir)
     logger.info("=" * 80)
 
 

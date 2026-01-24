@@ -1,7 +1,7 @@
-"""Output formatting utilities for MMCircuitEval evaluation.
+"""Output formatting utilities for MMCircuitEval.
 
-This module provides functions for formatting model outputs, answers, and scores.
-It fixes bugs present in the external MMCircuitEval formatter implementation.
+Most of functions are basically same as those in original MMCircuitEval repo,
+with some bug fixes and improvements.
 """
 
 import json
@@ -9,14 +9,16 @@ from typing import Optional
 
 
 def formatAnswer(
-    answer: Optional[str], explanation: Optional[str], raw_pred: Optional[str] = None
+    answer: Optional[str],
+    explanation: Optional[str],
+    raw_pred: Optional[str] = None,
 ) -> str:
     """Format answer and explanation into evaluation string.
 
     Args:
-        answer: The answer text (can be None).
-        explanation: The explanation text (can be None).
-        raw_pred: The raw prediction text (can be None).
+        answer: The answer text.
+        explanation: The explanation text.
+        raw_pred: The raw prediction text.
 
     Returns:
         Formatted string combining answer and explanation.
@@ -35,7 +37,9 @@ def formatAnswer(
     return formatted_answer
 
 
-def formatModelOutput(out: Optional[str], version: str = "v1") -> tuple[Optional[str], Optional[str]]:
+def formatModelOutput(
+    out: Optional[str], version: str = "v1"
+) -> tuple[Optional[str], Optional[str]]:
     """Parse model output to extract answer and explanation.
 
     Supports two output formats:
@@ -56,7 +60,6 @@ def formatModelOutput(out: Optional[str], version: str = "v1") -> tuple[Optional
         return None, None
 
     if version == "v1":
-        # Parse JSON format
         out = out.split("```json")[-1].split("```")[0].strip()
         try:
             pred = json.loads(out)
@@ -65,8 +68,11 @@ def formatModelOutput(out: Optional[str], version: str = "v1") -> tuple[Optional
             return None, None
 
     elif version == "v2":
-        # Parse markdown format
-        answer = out.split("### Answer ###")[-1].split("### Explanation ###")[0].strip()
+        answer = (
+            out.split("### Answer ###")[-1]
+            .split("### Explanation ###")[0]
+            .strip()
+        )
         explanation = out.split("### Explanation ###")[-1].strip()
 
         if answer == "":
@@ -87,11 +93,7 @@ def formatScore(
     emb_weight: float = 1.0,
     llm_weight: float = 2.0,
 ) -> float:
-    """Compute weighted aggregated score from individual metrics.
-
-    This function fixes two bugs in the external implementation:
-    1. Adds default parameter values to support single-argument calls
-    2. Uses 'emb' key instead of 'embedding' to match evaluator output
+    """Compute weighted averaged score from individual metrics.
 
     Args:
         score: Dictionary with 'bleu', 'rouge', 'emb', 'llm' keys.
@@ -102,14 +104,11 @@ def formatScore(
 
     Returns:
         Weighted average score in the range [0, 1].
-
-    Raises:
-        KeyError: If required keys are missing from score dictionary.
     """
     total_score = (
         bleu_weight * score["bleu"]
         + rouge_weight * score["rouge"]
-        + emb_weight * score["emb"]  # FIXED: was 'embedding' in external code
+        + emb_weight * score["emb"]  # FIXED
         + llm_weight * score["llm"]
     )
     total_weight = bleu_weight + rouge_weight + emb_weight + llm_weight
