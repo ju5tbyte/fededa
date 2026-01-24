@@ -1,4 +1,4 @@
-"""UniEval scorer wrapper for ORD-QA."""
+"""UniEval scorer wrapper for question answering evaluation."""
 
 import logging
 import sys
@@ -7,8 +7,8 @@ from typing import Optional
 
 import nltk
 
-# Import moduels from original UniEval repository
-UNIEVAL_PATH = Path(__file__).resolve().parents[3] / "external" / "UniEval"
+# Import modules from original UniEval repository
+UNIEVAL_PATH = Path(__file__).resolve().parents[2] / "external" / "UniEval"
 if str(UNIEVAL_PATH) not in sys.path:
     sys.path.insert(0, str(UNIEVAL_PATH))
 from metric.evaluator import get_evaluator
@@ -45,8 +45,8 @@ class UniEvalScorer:
 
     Attributes:
         evaluator: UniEval evaluator instance.
-        dimensions (list[str]): Evaluation dimensions to compute.
-        use_reference (bool): Whether to use reference documents in evaluation.
+        dimensions: Evaluation dimensions to compute.
+        use_reference: Whether to use reference documents in evaluation.
     """
 
     def __init__(

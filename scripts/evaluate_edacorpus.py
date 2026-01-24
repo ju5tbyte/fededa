@@ -1,8 +1,8 @@
-"""ORD-QA benchmark evaluation script.
+"""EDA-Corpus benchmark evaluation script.
 
 Usage:
-    python scripts/evaluate_ordqa.py
-    python scripts/evaluate_ordqa.py model=qwen3_model model.params.model_name=Qwen/Qwen3-8B evaluation.gpu_id=4
+    python scripts/evaluate_edacorpus.py
+    python scripts/evaluate_edacorpus.py model=qwen3_model model.params.model_name=Qwen/Qwen3-8B evaluation.gpu_id=4
 """
 
 import json
@@ -14,10 +14,14 @@ from dotenv import load_dotenv
 from hydra.core.hydra_config import HydraConfig
 from omegaconf import DictConfig
 
-from src.evaluation.ordqa.evaluator import Evaluator
-from src.evaluation.ordqa.runner import Runner
+from src.evaluation.custom_evaluator import CustomEvaluator
+from src.evaluation.edacorpus.runner import Runner
 from src.models.builder import build_model
 from src.utils.set_seed import set_seed
+
+from src.evaluation.unieval_scorer import UniEvalScorer
+from src.evaluation.embedding_scorer import EmbeddingScorer
+from src.evaluation.llm_scorer import LLMScorer
 
 load_dotenv()
 
@@ -26,15 +30,15 @@ logger = logging.getLogger(__name__)
 
 @hydra.main(
     config_path="../configs",
-    config_name="evaluate_ordqa",
+    config_name="evaluate_edacorpus",
     version_base=None,
 )
 def main(cfg: DictConfig) -> None:
-    """Run ORD-QA benchmark evaluation.
+    """Run EDA-Corpus benchmark evaluation.
 
     1. Inference: Generate model predictions for all questions
-    2. Evaluation: Compute metrics (BLEU, ROUGE-L, optional UniEval)
-    3. Results: Display aggregated scores by question type
+    2. Evaluation: Compute metrics (UniEval, Embedding Similarity, LLM Judge)
+    3. Results: Display aggregated scores
 
     Args:
         cfg: Hydra configuration containing model and evaluation settings.
@@ -42,7 +46,7 @@ def main(cfg: DictConfig) -> None:
     set_seed(cfg.evaluation.seed)
 
     logger.info("=" * 80)
-    logger.info("ORD-QA Benchmark Evaluation")
+    logger.info("EDA-Corpus Benchmark Evaluation")
     logger.info("=" * 80)
 
     gpu_id = cfg.evaluation.get("gpu_id")
@@ -62,18 +66,19 @@ def main(cfg: DictConfig) -> None:
     logger.info("  Device: %s", device)
     model = build_model(cfg.model)
 
-    # (Optional) Create UniEval scorer
     unieval_scorer = None
+    embedding_scorer = None
+    llm_scorer = None
+
+    # (Optional) Create UniEval scorer
     if cfg.evaluation.use_unieval:
         logger.info("Initializing UniEval scorer")
         try:
-            from src.evaluation.unieval_scorer import UniEvalScorer
-
             unieval_scorer = UniEvalScorer(
                 device=device,
                 max_length=cfg.evaluation.unieval.max_length,
                 dimensions=list(cfg.evaluation.unieval.dimensions),
-                use_reference=cfg.evaluation.use_reference,
+                use_reference=False,  # No reference in EDA-Corpus
                 cache_dir=cfg.evaluation.unieval.get("cache_dir"),
             )
             logger.info(
@@ -86,11 +91,58 @@ def main(cfg: DictConfig) -> None:
             )
             unieval_scorer = None
 
-    evaluator = Evaluator(unieval_scorer=unieval_scorer)
-    runner = Runner(
-        bleu_weight=cfg.evaluation.weights.bleu,
-        rouge_l_weight=cfg.evaluation.weights.rouge_l,
+    # (Optional) Create Embedding scorer
+    if cfg.evaluation.use_embedding:
+        logger.info("Initializing Embedding scorer")
+        try:
+            embedding_scorer = EmbeddingScorer(
+                api_key=cfg.evaluation.embedding.api_key,
+                base_url=cfg.evaluation.embedding.base_url,
+                model_id=cfg.evaluation.embedding.model_id,
+            )
+            logger.info(
+                "  Embedding model: %s", cfg.evaluation.embedding.model_id
+            )
+        except Exception as e:
+            logger.error("Failed to initialize Embedding scorer: %s", e)
+            logger.warning(
+                "Continuing without Embedding scorer. Embedding scores will default to 0.0"
+            )
+            embedding_scorer = None
+
+    # (Optional) Create LLM scorer
+    if cfg.evaluation.use_llm:
+        logger.info("Initializing LLM scorer")
+        try:
+            llm_scorer = LLMScorer(
+                api_key=cfg.evaluation.llm.api_key,
+                base_url=cfg.evaluation.llm.base_url,
+                model_id=cfg.evaluation.llm.model_id,
+                evaluation_prompt_template=cfg.evaluation.llm.get(
+                    "evaluation_prompt_template"
+                ),
+            )
+            logger.info("  LLM model: %s", cfg.evaluation.llm.model_id)
+        except Exception as e:
+            logger.error("Failed to initialize LLM scorer: %s", e)
+            logger.warning(
+                "Continuing without LLM scorer. LLM scores will default to 0.0"
+            )
+            llm_scorer = None
+
+    evaluator = CustomEvaluator(
+        unieval_scorer=unieval_scorer,
+        embedding_scorer=embedding_scorer,
+        llm_scorer=llm_scorer,
         unieval_weight=cfg.evaluation.weights.unieval,
+        embedding_weight=cfg.evaluation.weights.embedding,
+        llm_weight=cfg.evaluation.weights.llm,
+    )
+
+    runner = Runner(
+        unieval_weight=cfg.evaluation.weights.unieval,
+        embedding_weight=cfg.evaluation.weights.embedding,
+        llm_weight=cfg.evaluation.weights.llm,
     )
 
     hydra_cfg = HydraConfig.get()
@@ -121,10 +173,7 @@ def main(cfg: DictConfig) -> None:
     # Phase 1: Inference
     if cfg.evaluation.execution.run_inference:
         logger.info("=" * 80)
-        logger.info("Phase 1: Running inference on ORD-QA dataset")
-        logger.info(
-            "Using reference documents: %s", cfg.evaluation.use_reference
-        )
+        logger.info("Phase 1: Running inference on EDA-Corpus dataset")
         # max_samples=None means evaluate all samples, else limit to specified number (for testing)
         if cfg.evaluation.max_samples is not None:
             logger.info(
@@ -138,7 +187,6 @@ def main(cfg: DictConfig) -> None:
             model,
             str(dataset_path),
             str(preds_path),
-            use_reference=cfg.evaluation.use_reference,
             max_samples=cfg.evaluation.max_samples,
         )
         logger.info("Inference complete. Predictions saved to %s", preds_path)
@@ -168,9 +216,9 @@ def main(cfg: DictConfig) -> None:
         logger.info("Phase 2: Computing evaluation metrics")
         logger.info("=" * 80)
         logger.info(
-            f"Metrics: BLEU (weight={cfg.evaluation.weights.bleu}), "
-            f"ROUGE-L (weight={cfg.evaluation.weights.rouge_l}), "
-            f"UniEval (weight={cfg.evaluation.weights.unieval}, enabled={cfg.evaluation.use_unieval})"
+            f"Metrics: UniEval (weight={cfg.evaluation.weights.unieval}, enabled={cfg.evaluation.use_unieval}), "
+            f"Embedding (weight={cfg.evaluation.weights.embedding}, enabled={cfg.evaluation.use_embedding}), "
+            f"LLM (weight={cfg.evaluation.weights.llm}, enabled={cfg.evaluation.use_llm})"
         )
         results = runner.run_evaluation(
             preds, str(dataset_path), evaluator, str(results_path)
