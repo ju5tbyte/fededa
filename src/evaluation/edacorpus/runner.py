@@ -107,8 +107,7 @@ class Runner:
             "Answer the following question "
             "accurately based on your knowledge of physical design automation workflows.\n\n"
         )
-        system_prompt += f"Question: {question}\n"
-        system_prompt += "Answer:"
+        system_prompt += f"{question}\n"
 
         return system_prompt
 
