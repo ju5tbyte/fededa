@@ -7,3 +7,6 @@
 [submodule "external/UniEval"]
 	path = external/UniEval
 	url = https://github.com/maszhongming/UniEval.git
+[submodule "external/EDA-Corpus"]
+	path = external/EDA-Corpus
+	url = https://github.com/OpenROAD-Assistant/EDA-Corpus.git
