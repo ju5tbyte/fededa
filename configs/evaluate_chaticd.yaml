@@ -1,0 +1,8 @@
+defaults:
+  - model: qwen3_model
+  - evaluation: chaticd
+  - _self_
+
+hydra:
+  run:
+    dir: outputs/chaticd/${now:%Y-%m-%d}/${now:%H-%M-%S}

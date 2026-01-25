@@ -1,0 +1,52 @@
+dataset_name: China-NCTIEDA/ChatICD-Bench
+
+weights:
+  unieval: 1.0
+  embedding: 1.0
+  llm: 1.0
+
+use_unieval: true
+use_embedding: true
+use_llm: true
+
+unieval:
+  max_length: 1024
+  cache_dir: null
+  dimensions:
+    - coherence
+    - consistency
+    - fluency
+    - relevance
+
+embedding:
+  api_key: ${oc.env:OPENAI_API_KEY}
+  base_url: https://api.openai.com/v1
+  model_id: text-embedding-3-large
+
+llm:
+  api_key: ${oc.env:OPENAI_API_KEY}
+  base_url: https://api.openai.com/v1
+  model_id: gpt-4o
+  evaluation_prompt_template: |
+    You are a professional expert in digital circuit design and integrated circuit (IC) engineering.
+    You need to compare the ground truth and prediction from AI models, to give a correctness score for the prediction.
+    The correctness score is 0.0 (totally wrong), 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, or 1.0 (totally right).
+    Strictly output only a single float number.
+
+    Question: {question}
+    Ground truth: {ground_truth}
+    Prediction: {prediction}
+
+output:
+  predictions_file: preds.json
+  results_file: results.json
+
+output_dir: null
+gpu_id: null
+seed: 42
+max_samples: null
+
+execution:
+  run_inference: true
+  run_evaluation: true
+  run_results: true
