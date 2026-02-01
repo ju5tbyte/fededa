@@ -114,15 +114,22 @@ def main(cfg: DictConfig) -> None:
     if cfg.evaluation.use_llm:
         logger.info("Initializing LLM scorer")
         try:
+            # Determine which prompt to use based on use_cot flag
+            use_cot = cfg.evaluation.llm.get("use_cot", False)
+            if use_cot:
+                prompt_template = cfg.evaluation.llm.get("cot_evaluation_prompt_template")
+            else:
+                prompt_template = cfg.evaluation.llm.get("evaluation_prompt_template")
+
             llm_scorer = LLMScorer(
                 api_key=cfg.evaluation.llm.api_key,
                 base_url=cfg.evaluation.llm.base_url,
                 model_id=cfg.evaluation.llm.model_id,
-                evaluation_prompt_template=cfg.evaluation.llm.get(
-                    "evaluation_prompt_template"
-                ),
+                evaluation_prompt_template=prompt_template,
+                use_cot=use_cot,
             )
             logger.info("  LLM model: %s", cfg.evaluation.llm.model_id)
+            logger.info("  CoT mode: %s", use_cot)
         except Exception as e:
             logger.error("Failed to initialize LLM scorer: %s", e)
             logger.warning(

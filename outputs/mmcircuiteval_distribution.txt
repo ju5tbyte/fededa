@@ -1,0 +1,653 @@
+================================================================================
+MMCircuitEval Dataset Distribution Report
+================================================================================
+
+================================================================================
+SPLIT: GENERAL
+================================================================================
+
+--------------------------------------------------------------------------------
+Field: question_types
+--------------------------------------------------------------------------------
+Total occurrences: 604
+Unique values: 2
+
+  single: 302 (50.00%)
+  open: 302 (50.00%)
+
+--------------------------------------------------------------------------------
+Field: difficulties
+--------------------------------------------------------------------------------
+Total occurrences: 604
+Unique values: 3
+
+  medium: 484 (80.13%)
+  easy: 92 (15.23%)
+  hard: 28 (4.64%)
+
+--------------------------------------------------------------------------------
+Field: abilities
+--------------------------------------------------------------------------------
+Total occurrences: 604
+Unique values: 4
+
+  knowledge: 507 (83.94%)
+  inference: 33 (5.46%)
+  computation: 32 (5.30%)
+  perception: 32 (5.30%)
+
+--------------------------------------------------------------------------------
+Field: ic_type
+--------------------------------------------------------------------------------
+Total occurrences: 604
+Unique values: 2
+
+  analog: 302 (50.00%)
+  digital: 302 (50.00%)
+
+--------------------------------------------------------------------------------
+Field: source
+--------------------------------------------------------------------------------
+Total occurrences: 604
+Unique values: 1
+
+  chipexpert: 604 (100.00%)
+
+--------------------------------------------------------------------------------
+Field: extra
+--------------------------------------------------------------------------------
+Total occurrences: 604
+Unique values: 8
+
+  analog electronic circuits tests: 151 (25.00%)
+  vlsi: 151 (25.00%)
+  subjective digital circuit: 91 (15.07%)
+  subjective RF: 68 (11.26%)
+  subjective analog circuit: 53 (8.77%)
+  subjective soc: 43 (7.12%)
+  subjective RF antenna: 24 (3.97%)
+  subjective eda: 23 (3.81%)
+
+================================================================================
+SPLIT: SPEC
+================================================================================
+
+--------------------------------------------------------------------------------
+Field: question_types
+--------------------------------------------------------------------------------
+Total occurrences: 490
+Unique values: 4
+
+  single: 192 (39.18%)
+  blank: 153 (31.22%)
+  open: 128 (26.12%)
+  multi: 17 (3.47%)
+
+--------------------------------------------------------------------------------
+Field: difficulties
+--------------------------------------------------------------------------------
+Total occurrences: 490
+Unique values: 3
+
+  medium: 244 (49.80%)
+  easy: 192 (39.18%)
+  hard: 54 (11.02%)
+
+--------------------------------------------------------------------------------
+Field: abilities
+--------------------------------------------------------------------------------
+Total occurrences: 490
+Unique values: 3
+
+  perception: 238 (48.57%)
+  computation: 144 (29.39%)
+  inference: 108 (22.04%)
+
+--------------------------------------------------------------------------------
+Field: ic_type
+--------------------------------------------------------------------------------
+Total occurrences: 205
+Unique values: 3
+
+  digital: 105 (51.22%)
+  analog: 99 (48.29%)
+  : 1 (0.49%)
+
+--------------------------------------------------------------------------------
+Field: source
+--------------------------------------------------------------------------------
+Total occurrences: 205
+Unique values: 2
+
+  datasheet: 191 (93.17%)
+  augmentation: 14 (6.83%)
+
+--------------------------------------------------------------------------------
+Field: extra
+--------------------------------------------------------------------------------
+Total occurrences: 205
+Unique values: 115
+
+  ESP32.PDF: 14 (6.83%)
+  MPU-6000.PDF: 14 (6.83%)
+  2N2222.PDF: 12 (5.85%)
+  ATMEGA48P.PDF: 9 (4.39%)
+  ATMEGA128.PDF: 8 (3.90%)
+  MAX202E.PDF: 8 (3.90%)
+  LTC1749.PDF: 7 (3.41%)
+  4066.PDF: 6 (2.93%)
+  TPA3116D2.PDF: 6 (2.93%)
+  2SC1815.PDF: 3 (1.46%)
+  HZ11B1.PDF: 3 (1.46%)
+  IRF3205.PDF: 3 (1.46%)
+  LM124.PDF: 3 (1.46%)
+  NE555.PDF: 3 (1.46%)
+  TDA2030.PDF: 3 (1.46%)
+  AOFD-120.PDF: 2 (0.98%)
+  BC546.PDF: 2 (0.98%)
+  BD777.PDF: 2 (0.98%)
+  BCM5221.PDF: 1 (0.49%)
+  LM339.PDF: 1 (0.49%)
+  LR38820.PDF: 1 (0.49%)
+  WM8725.PDF;7,8,9: 1 (0.49%)
+  WM8725.PDF;4,5,6: 1 (0.49%)
+  WM8725.PDF;1,2,3: 1 (0.49%)
+  VTM48EH015T050A00.PDF;13,14,15: 1 (0.49%)
+  VTM48EH015T050A00.PDF;10,11,12: 1 (0.49%)
+  VTM48EH015T050A00.PDF;7,8,9: 1 (0.49%)
+  VTM48EH015T050A00.PDF;4,5,6: 1 (0.49%)
+  VTM48EH015T050A00.PDF;1,2,3: 1 (0.49%)
+  VTM48EF020T080A00.PDF;13,14,15: 1 (0.49%)
+  VTM48EF020T080A00.PDF;10,11,12: 1 (0.49%)
+  VTM48EF020T080A00.PDF;4,5,6: 1 (0.49%)
+  VTM48EF020T080A00.PDF;1,2,3: 1 (0.49%)
+  U4256BM.PDF;10,11,12: 1 (0.49%)
+  U4256BM.PDF;7,8,9: 1 (0.49%)
+  U4256BM.PDF;4,5,6: 1 (0.49%)
+  U4256BM.PDF;1,2,3: 1 (0.49%)
+  TP7660H.PDF;1,2,3: 1 (0.49%)
+  PI3WVR31310A.PDF;10,11,12: 1 (0.49%)
+  PI3WVR31310A.PDF;7,8,9: 1 (0.49%)
+  PI3WVR31310A.PDF;4,5,6: 1 (0.49%)
+  PI3WVR31310A.PDF;1,2,3: 1 (0.49%)
+  PDSP1601MC.PDF;10,11,12: 1 (0.49%)
+  PDSP1601MC.PDF;7,8,9: 1 (0.49%)
+  PDSP1601MC.PDF;4,5,6: 1 (0.49%)
+  PDSP1601MC.PDF;1,2,3: 1 (0.49%)
+  NTMS4937N.PDF;1,2,3: 1 (0.49%)
+  MC14008B.PDF;1,2,3: 1 (0.49%)
+  LM319.PDF;4,5,6: 1 (0.49%)
+  LM319.PDF;1,2,3: 1 (0.49%)
+  L4C381.PDF;7,8,9: 1 (0.49%)
+  L4C381.PDF;4,5,6: 1 (0.49%)
+  L4C381.PDF;1,2,3: 1 (0.49%)
+  KS0118C.PDF;7,8,9: 1 (0.49%)
+  KS0118C.PDF;4,5,6: 1 (0.49%)
+  KS0118C.PDF;1,2,3: 1 (0.49%)
+  ICS83840B.PDF;4,5,6: 1 (0.49%)
+  ICS83840B.PDF;1,2,3: 1 (0.49%)
+  HCC4560B.PDF;1,2,3: 1 (0.49%)
+  ESO01000.PDF;1,2,3: 1 (0.49%)
+  DAC3550A.PDF;31,32,33: 1 (0.49%)
+  DAC3550A.PDF;25,26,27: 1 (0.49%)
+  DAC3550A.PDF;22,23,24: 1 (0.49%)
+  DAC3550A.PDF;16,17,18: 1 (0.49%)
+  DAC3550A.PDF;13,14,15: 1 (0.49%)
+  DAC3550A.PDF;10,11,12: 1 (0.49%)
+  DAC3550A.PDF;7,8,9: 1 (0.49%)
+  DAC3550A.PDF;4,5,6: 1 (0.49%)
+  DAC3550A.PDF;1,2,3: 1 (0.49%)
+  ATR4256.PDF;16,17,18: 1 (0.49%)
+  ATR4256.PDF;13,14,15: 1 (0.49%)
+  ATR4256.PDF;10,11,12: 1 (0.49%)
+  ATR4256.PDF;7,8,9: 1 (0.49%)
+  ATR4256.PDF;4,5,6: 1 (0.49%)
+  ATR4256.PDF;1,2,3: 1 (0.49%)
+  AS111.PDF;16,17,18: 1 (0.49%)
+  AS111.PDF;13,14,15: 1 (0.49%)
+  AS111.PDF;10,11,12: 1 (0.49%)
+  AS111.PDF;7,8,9: 1 (0.49%)
+  AS111.PDF;4,5,6: 1 (0.49%)
+  AS111.PDF;1,2,3: 1 (0.49%)
+  APT5014BLLG.PDF;40,41,42: 1 (0.49%)
+  APT5014BLLG.PDF;37,38,39: 1 (0.49%)
+  APT5014BLLG.PDF;34,35,36: 1 (0.49%)
+  APT5014BLLG.PDF;31,32,33: 1 (0.49%)
+  APT5014BLLG.PDF;28,29,30: 1 (0.49%)
+  APT5014BLLG.PDF;25,26,27: 1 (0.49%)
+  APT5014BLLG.PDF;22,23,24: 1 (0.49%)
+  APT5014BLLG.PDF;19,20,21: 1 (0.49%)
+  APT5014BLLG.PDF;16,17,18: 1 (0.49%)
+  APT5014BLLG.PDF;13,14,15: 1 (0.49%)
+  APT5014BLLG.PDF;10,11,12: 1 (0.49%)
+  APT5014BLLG.PDF;7,8,9: 1 (0.49%)
+  APT5014BLLG.PDF;4,5,6: 1 (0.49%)
+  APT5014BLLG.PDF;1,2,3: 1 (0.49%)
+  AK5720VT.PDF;22,23,24: 1 (0.49%)
+  AK5720VT.PDF;19,20,21: 1 (0.49%)
+  AK5720VT.PDF;16,17,18: 1 (0.49%)
+  AK5720VT.PDF;13,14,15: 1 (0.49%)
+  AK5720VT.PDF;10,11,12: 1 (0.49%)
+  AK5720VT.PDF;7,8,9: 1 (0.49%)
+  AK5720VT.PDF;4,5,6: 1 (0.49%)
+  AK5720VT.PDF;1,2,3: 1 (0.49%)
+  TPA3116D2.PDF;31,32,33: 1 (0.49%)
+  TPA3116D2.PDF;28,30,29: 1 (0.49%)
+  TPA3116D2.PDF;25,26,27: 1 (0.49%)
+  TPA3116D2.PDF;22,23,24: 1 (0.49%)
+  TPA3116D2.PDF;19,20,21: 1 (0.49%)
+  TPA3116D2.PDF;16,17,18: 1 (0.49%)
+  TPA3116D2.PDF;13,14,15: 1 (0.49%)
+  TPA3116D2.PDF;10,11,12: 1 (0.49%)
+  TPA3116D2.PDF;7,8,9: 1 (0.49%)
+  TPA3116D2.PDF;4,5,6: 1 (0.49%)
+  TPA3116D2.PDF;1,2,3: 1 (0.49%)
+  TDA2030.PDF;7,8,9: 1 (0.49%)
+
+================================================================================
+SPLIT: FRONTEND
+================================================================================
+
+--------------------------------------------------------------------------------
+Field: question_types
+--------------------------------------------------------------------------------
+Total occurrences: 1516
+Unique values: 4
+
+  open: 1315 (86.74%)
+  blank: 129 (8.51%)
+  single: 71 (4.68%)
+  multi: 1 (0.07%)
+
+--------------------------------------------------------------------------------
+Field: difficulties
+--------------------------------------------------------------------------------
+Total occurrences: 1516
+Unique values: 3
+
+  hard: 719 (47.43%)
+  medium: 631 (41.62%)
+  easy: 166 (10.95%)
+
+--------------------------------------------------------------------------------
+Field: abilities
+--------------------------------------------------------------------------------
+Total occurrences: 1516
+Unique values: 4
+
+  computation: 599 (39.51%)
+  inference: 482 (31.79%)
+  knowledge: 316 (20.84%)
+  perception: 119 (7.85%)
+
+--------------------------------------------------------------------------------
+Field: ic_type
+--------------------------------------------------------------------------------
+Total occurrences: 1227
+Unique values: 2
+
+  analog: 758 (61.78%)
+  digital: 469 (38.22%)
+
+--------------------------------------------------------------------------------
+Field: source
+--------------------------------------------------------------------------------
+Total occurrences: 1227
+Unique values: 20
+
+  augmentation: 657 (53.55%)
+  llm_benchmark_formula: 195 (15.89%)
+  rtl_benchmark: 99 (8.07%)
+  llm_benchmark_nowcoder: 48 (3.91%)
+  res analog netlist: 39 (3.18%)
+  res new digital front: 38 (3.10%)
+  vlsiverify: 22 (1.79%)
+  springer: 14 (1.14%)
+  res digital front: 14 (1.14%)
+  llm_benchmark_exp: 12 (0.98%)
+  intellipaat: 12 (0.98%)
+  chipverify: 10 (0.81%)
+  simplilearn: 10 (0.81%)
+  chipedge: 10 (0.81%)
+  coderpad: 10 (0.81%)
+  stackoverflow: 10 (0.81%)
+  tainan-400: 9 (0.73%)
+  maven-silicon: 9 (0.73%)
+  interviewprep: 6 (0.49%)
+  zhihu: 3 (0.24%)
+
+--------------------------------------------------------------------------------
+Field: extra
+--------------------------------------------------------------------------------
+Total occurrences: 1227
+Unique values: 13
+
+  : 1102 (89.81%)
+  https://vlsiverify.com/interview-questions/verilog-interview-questions/: 22 (1.79%)
+  https://link.springer.com/book/10.1007/b116655: 14 (1.14%)
+  https://intellipaat.com/blog/interview-question/verilog-interview-questions/: 12 (0.98%)
+  https://www.chipverify.com/verilog/verilog-interview-questions-set-1: 10 (0.81%)
+  https://www.simplilearn.com/verilog-interview-questions-article: 10 (0.81%)
+  https://chipedge.com/top-25-verilog-interview-questions-you-should-know/: 10 (0.81%)
+  https://coderpad.io/interview-questions/verilog-interview-questions/: 10 (0.81%)
+  https://stackoverflow.com/questions/tagged/verilog: 10 (0.81%)
+  https://www.tainan-400.tw/post/interview-questions-on-verilog: 9 (0.73%)
+  https://www.maven-silicon.com/blog/verilog-interview-questions-and-answers/: 9 (0.73%)
+  https://interviewprep.org/verilog-interview-questions/: 6 (0.49%)
+  https://zhuanlan.zhihu.com/p/492336473: 3 (0.24%)
+
+================================================================================
+SPLIT: BACKEND
+================================================================================
+
+--------------------------------------------------------------------------------
+Field: question_types
+--------------------------------------------------------------------------------
+Total occurrences: 1004
+Unique values: 4
+
+  open: 649 (64.64%)
+  single: 173 (17.23%)
+  blank: 114 (11.35%)
+  multi: 68 (6.77%)
+
+--------------------------------------------------------------------------------
+Field: difficulties
+--------------------------------------------------------------------------------
+Total occurrences: 1004
+Unique values: 3
+
+  medium: 761 (75.80%)
+  hard: 144 (14.34%)
+  easy: 99 (9.86%)
+
+--------------------------------------------------------------------------------
+Field: abilities
+--------------------------------------------------------------------------------
+Total occurrences: 1004
+Unique values: 4
+
+  knowledge: 623 (62.05%)
+  inference: 209 (20.82%)
+  computation: 151 (15.04%)
+  perception: 21 (2.09%)
+
+--------------------------------------------------------------------------------
+Field: ic_type
+--------------------------------------------------------------------------------
+Total occurrences: 835
+Unique values: 2
+
+  digital: 551 (65.99%)
+  analog: 284 (34.01%)
+
+--------------------------------------------------------------------------------
+Field: source
+--------------------------------------------------------------------------------
+Total occurrences: 835
+Unique values: 8
+
+  augmentation: 429 (51.38%)
+  interview_textbook: 136 (16.29%)
+  EDA-Corpus: 106 (12.69%)
+  llm_benchmark_objective: 103 (12.34%)
+  textbook: 49 (5.87%)
+  zhihu: 9 (1.08%)
+  coachip: 2 (0.24%)
+  Razavi, B. (2016). Design of Analog CMOS Integrated Circuits. McGraw-Hill Higher Education. https://books.google.com/books?id=hFzmCwAAQBAJ: 1 (0.12%)
+
+--------------------------------------------------------------------------------
+Field: extra
+--------------------------------------------------------------------------------
+Total occurrences: 835
+Unique values: 249
+
+  Razavi, B. (2016). Design of Analog CMOS Integrated Circuits. McGraw-Hill Higher Education. https://books.google.com/books?id=hFzmCwAAQBAJ: 143 (17.13%)
+  : 104 (12.46%)
+  Razavi: 26 (3.11%)
+  Q3.3.2: 7 (0.84%)
+  Q3.6.2: 7 (0.84%)
+  Q4.2.6: 7 (0.84%)
+  Q4.4.15: 7 (0.84%)
+  Q4.4.16: 7 (0.84%)
+  Q4.4.17: 7 (0.84%)
+  Q5.1.6: 7 (0.84%)
+  Q5.1.14: 7 (0.84%)
+  Q5.3.4: 7 (0.84%)
+  Q5.3.12: 7 (0.84%)
+  Q5.4.1: 7 (0.84%)
+  Q5.4.2: 7 (0.84%)
+  Q5.4.3: 7 (0.84%)
+  Q5.5.11: 7 (0.84%)
+  Q5.7.3: 7 (0.84%)
+  Q7.1.4: 7 (0.84%)
+  Q7.1.18: 7 (0.84%)
+  Q7.4.8: 7 (0.84%)
+  Q7.4.9: 7 (0.84%)
+  Q7.4.11: 7 (0.84%)
+  Q7.4.15: 7 (0.84%)
+  Q7.4.16: 7 (0.84%)
+  Q7.5.2: 7 (0.84%)
+  Q7.5.3: 7 (0.84%)
+  Q7.5.5: 7 (0.84%)
+  Q7.5.6: 7 (0.84%)
+  Q7.6.2: 7 (0.84%)
+  Q7.7.9: 7 (0.84%)
+  Q7.8.2: 7 (0.84%)
+  Q7.8.4: 7 (0.84%)
+  Q7.8.5: 7 (0.84%)
+  Q7.9.2: 7 (0.84%)
+  Q7.9.3: 7 (0.84%)
+  Q7.10.1: 7 (0.84%)
+  Q7.10.2: 7 (0.84%)
+  Q7.10.5: 7 (0.84%)
+  Q7.10.7: 7 (0.84%)
+  Q7.10.9: 7 (0.84%)
+  Q7.11.3: 7 (0.84%)
+  Q7.11.5: 7 (0.84%)
+  Q7.11.6: 7 (0.84%)
+  Q8.1.2: 7 (0.84%)
+  Q8.1.3: 7 (0.84%)
+  Q10.2.3: 7 (0.84%)
+  Q11.2.12: 7 (0.84%)
+  Q11.6.1: 7 (0.84%)
+  Q12.1.8*: 7 (0.84%)
+  Q3.1.2: 7 (0.84%)
+  Q4.4.3: 7 (0.84%)
+  Q4.4.7: 7 (0.84%)
+  Q4.3.4: 7 (0.84%)
+  Q3.2.1: 4 (0.48%)
+  https://zhuanlan.zhihu.com/p/663134943: 3 (0.36%)
+  https://zhuanlan.zhihu.com/p/5331115964: 3 (0.36%)
+  https://zhuanlan.zhihu.com/p/718450639: 3 (0.36%)
+  https://ic.coachip.cn/article/detail/237: 2 (0.24%)
+  Q3.2.3: 1 (0.12%)
+  Q3.2.13: 1 (0.12%)
+  Q3.2.14: 1 (0.12%)
+  Q3.3.1: 1 (0.12%)
+  Q3.3.3: 1 (0.12%)
+  Q3.4.1: 1 (0.12%)
+  Q3.4.7: 1 (0.12%)
+  Q3.6.6: 1 (0.12%)
+  Q3.6.4: 1 (0.12%)
+  Q3.6.7: 1 (0.12%)
+  Q4.2.2: 1 (0.12%)
+  Q4.2.3: 1 (0.12%)
+  Q4.2.4: 1 (0.12%)
+  Q4.4.1: 1 (0.12%)
+  Q4.4.2: 1 (0.12%)
+  Q4.4.5: 1 (0.12%)
+  Q4.4.6: 1 (0.12%)
+  Q4.4.8: 1 (0.12%)
+  Q4.4.18: 1 (0.12%)
+  Q4.4.19: 1 (0.12%)
+  Q4.6.1: 1 (0.12%)
+  Q5.1.1: 1 (0.12%)
+  Q5.1.2: 1 (0.12%)
+  Q5.1.15: 1 (0.12%)
+  Q5.1.21: 1 (0.12%)
+  Q5.1.22: 1 (0.12%)
+  Q5.1.24: 1 (0.12%)
+  Q5.2.1: 1 (0.12%)
+  Q5.2.2: 1 (0.12%)
+  Q5.3.2: 1 (0.12%)
+  Q5.3.3: 1 (0.12%)
+  Q5.5.12: 1 (0.12%)
+  Q6.1.2: 1 (0.12%)
+  Q6.1.4: 1 (0.12%)
+  Q7.1.3: 1 (0.12%)
+  Q7.1.5: 1 (0.12%)
+  Q7.2.1: 1 (0.12%)
+  Q7.4.17: 1 (0.12%)
+  Q7.5.1: 1 (0.12%)
+  Q7.7.1: 1 (0.12%)
+  Q7.7.2: 1 (0.12%)
+  Q7.10.4: 1 (0.12%)
+  Q7.10.6: 1 (0.12%)
+  Q7.11.2: 1 (0.12%)
+  Q7.11.4: 1 (0.12%)
+  Q7.11.7: 1 (0.12%)
+  Q7.11.9: 1 (0.12%)
+  Q3.2.2: 1 (0.12%)
+  Q3.2.4: 1 (0.12%)
+  Q3.6.3: 1 (0.12%)
+  Q3.7.2: 1 (0.12%)
+  Q4.2.1: 1 (0.12%)
+  Q4.3.1: 1 (0.12%)
+  Q4.4.4: 1 (0.12%)
+  Q4.4.20: 1 (0.12%)
+  Q4.9.5: 1 (0.12%)
+  Q5.1.12: 1 (0.12%)
+  Q5.1.13: 1 (0.12%)
+  Q5.1.17: 1 (0.12%)
+  Q5.1.34: 1 (0.12%)
+  Q5.1.38: 1 (0.12%)
+  Q5.5.3: 1 (0.12%)
+  Q6.1.1: 1 (0.12%)
+  Q7.1.1: 1 (0.12%)
+  Q7.2.2: 1 (0.12%)
+  Q7.4.2: 1 (0.12%)
+  Q7.4.5: 1 (0.12%)
+  Q7.4.6: 1 (0.12%)
+  Q7.4.13: 1 (0.12%)
+  Q7.4.14: 1 (0.12%)
+  Q7.7.3: 1 (0.12%)
+  Q7.7.4: 1 (0.12%)
+  Q7.7.5: 1 (0.12%)
+  Q7.7.6: 1 (0.12%)
+  Q7.8.6: 1 (0.12%)
+  Q7.10.3: 1 (0.12%)
+  Q10.3.15: 1 (0.12%)
+  Q11.3.6: 1 (0.12%)
+  Q12.1.1: 1 (0.12%)
+  Q12.2.1: 1 (0.12%)
+  Q13.3.2: 1 (0.12%)
+  Q13.3.3: 1 (0.12%)
+  Q13.3.4: 1 (0.12%)
+  Q3.3.10: 1 (0.12%)
+  Augmented_Data/Question-Answer/Flow/Flow.csv--line-1: 1 (0.12%)
+  Augmented_Data/Question-Answer/Flow/Flow.csv--line-3: 1 (0.12%)
+  Augmented_Data/Question-Answer/Flow/Flow.csv--line-4: 1 (0.12%)
+  Augmented_Data/Question-Answer/Flow/Flow.csv--line-5: 1 (0.12%)
+  Non-Augmented_Data/Question-Answer/Question-Answer_Dataset.csv--line-91: 1 (0.12%)
+  Non-Augmented_Data/Question-Answer/Question-Answer_Dataset.csv--line-92: 1 (0.12%)
+  Non-Augmented_Data/Question-Answer/Question-Answer_Dataset.csv--line-93: 1 (0.12%)
+  Non-Augmented_Data/Question-Answer/Question-Answer_Dataset.csv--line-94: 1 (0.12%)
+  Non-Augmented_Data/Question-Answer/Question-Answer_Dataset.csv--line-95: 1 (0.12%)
+  Non-Augmented_Data/Question-Answer/Question-Answer_Dataset.csv--line-96: 1 (0.12%)
+  Non-Augmented_Data/Question-Answer/Question-Answer_Dataset.csv--line-97: 1 (0.12%)
+  Non-Augmented_Data/Question-Answer/Question-Answer_Dataset.csv--line-98: 1 (0.12%)
+  Non-Augmented_Data/Question-Answer/Question-Answer_Dataset.csv--line-99: 1 (0.12%)
+  Non-Augmented_Data/Question-Answer/Question-Answer_Dataset.csv--line-100: 1 (0.12%)
+  Non-Augmented_Data/Question-Answer/Question-Answer_Dataset.csv--line-101: 1 (0.12%)
+  Non-Augmented_Data/Question-Answer/Question-Answer_Dataset.csv--line-102: 1 (0.12%)
+  Non-Augmented_Data/Question-Answer/Question-Answer_Dataset.csv--line-103: 1 (0.12%)
+  Non-Augmented_Data/Question-Answer/Question-Answer_Dataset.csv--line-104: 1 (0.12%)
+  Non-Augmented_Data/Question-Answer/Question-Answer_Dataset.csv--line-105: 1 (0.12%)
+  Non-Augmented_Data/Question-Answer/Question-Answer_Dataset.csv--line-106: 1 (0.12%)
+  Non-Augmented_Data/Question-Answer/Question-Answer_Dataset.csv--line-107: 1 (0.12%)
+  Non-Augmented_Data/Question-Answer/Question-Answer_Dataset.csv--line-108: 1 (0.12%)
+  Non-Augmented_Data/Question-Answer/Question-Answer_Dataset.csv--line-109: 1 (0.12%)
+  Non-Augmented_Data/Question-Answer/Question-Answer_Dataset.csv--line-110: 1 (0.12%)
+  Non-Augmented_Data/Question-Answer/Question-Answer_Dataset.csv--line-111: 1 (0.12%)
+  Non-Augmented_Data/Question-Answer/Question-Answer_Dataset.csv--line-112: 1 (0.12%)
+  Non-Augmented_Data/Question-Answer/Question-Answer_Dataset.csv--line-113: 1 (0.12%)
+  Non-Augmented_Data/Question-Answer/Question-Answer_Dataset.csv--line-114: 1 (0.12%)
+  Non-Augmented_Data/Question-Answer/Question-Answer_Dataset.csv--line-115: 1 (0.12%)
+  Non-Augmented_Data/Question-Answer/Question-Answer_Dataset.csv--line-116: 1 (0.12%)
+  Non-Augmented_Data/Question-Answer/Question-Answer_Dataset.csv--line-117: 1 (0.12%)
+  Non-Augmented_Data/Question-Answer/Question-Answer_Dataset.csv--line-118: 1 (0.12%)
+  Non-Augmented_Data/Question-Answer/Question-Answer_Dataset.csv--line-119: 1 (0.12%)
+  Non-Augmented_Data/Question-Answer/Question-Answer_Dataset.csv--line-120: 1 (0.12%)
+  Non-Augmented_Data/Question-Answer/Question-Answer_Dataset.csv--line-121: 1 (0.12%)
+  Non-Augmented_Data/Question-Answer/Question-Answer_Dataset.csv--line-122: 1 (0.12%)
+  Non-Augmented_Data/Question-Answer/Question-Answer_Dataset.csv--line-123: 1 (0.12%)
+  Non-Augmented_Data/Question-Answer/Question-Answer_Dataset.csv--line-124: 1 (0.12%)
+  Non-Augmented_Data/Question-Answer/Question-Answer_Dataset.csv--line-125: 1 (0.12%)
+  Non-Augmented_Data/Question-Answer/Question-Answer_Dataset.csv--line-126: 1 (0.12%)
+  Non-Augmented_Data/Question-Answer/Question-Answer_Dataset.csv--line-127: 1 (0.12%)
+  Non-Augmented_Data/Question-Answer/Question-Answer_Dataset.csv--line-128: 1 (0.12%)
+  Non-Augmented_Data/Question-Answer/Question-Answer_Dataset.csv--line-129: 1 (0.12%)
+  Non-Augmented_Data/Question-Answer/Question-Answer_Dataset.csv--line-130: 1 (0.12%)
+  Non-Augmented_Data/Question-Answer/Question-Answer_Dataset.csv--line-131: 1 (0.12%)
+  Non-Augmented_Data/Question-Answer/Question-Answer_Dataset.csv--line-132: 1 (0.12%)
+  Non-Augmented_Data/Question-Answer/Question-Answer_Dataset.csv--line-133: 1 (0.12%)
+  Non-Augmented_Data/Question-Answer/Question-Answer_Dataset.csv--line-134: 1 (0.12%)
+  Non-Augmented_Data/Question-Answer/Question-Answer_Dataset.csv--line-135: 1 (0.12%)
+  Non-Augmented_Data/Question-Answer/Question-Answer_Dataset.csv--line-136: 1 (0.12%)
+  Non-Augmented_Data/Question-Answer/Question-Answer_Dataset.csv--line-137: 1 (0.12%)
+  Non-Augmented_Data/Question-Answer/Question-Answer_Dataset.csv--line-138: 1 (0.12%)
+  Non-Augmented_Data/Question-Answer/Question-Answer_Dataset.csv--line-139: 1 (0.12%)
+  Non-Augmented_Data/Question-Answer/Question-Answer_Dataset.csv--line-140: 1 (0.12%)
+  Non-Augmented_Data/Question-Answer/Question-Answer_Dataset.csv--line-141: 1 (0.12%)
+  Non-Augmented_Data/Question-Answer/Question-Answer_Dataset.csv--line-142: 1 (0.12%)
+  Non-Augmented_Data/Question-Answer/Question-Answer_Dataset.csv--line-143: 1 (0.12%)
+  Non-Augmented_Data/Question-Answer/Question-Answer_Dataset.csv--line-144: 1 (0.12%)
+  Non-Augmented_Data/Question-Answer/Question-Answer_Dataset.csv--line-145: 1 (0.12%)
+  Non-Augmented_Data/Question-Answer/Question-Answer_Dataset.csv--line-146: 1 (0.12%)
+  Non-Augmented_Data/Question-Answer/Question-Answer_Dataset.csv--line-147: 1 (0.12%)
+  Non-Augmented_Data/Question-Answer/Question-Answer_Dataset.csv--line-148: 1 (0.12%)
+  Non-Augmented_Data/Question-Answer/Question-Answer_Dataset.csv--line-149: 1 (0.12%)
+  Non-Augmented_Data/Question-Answer/Question-Answer_Dataset.csv--line-150: 1 (0.12%)
+  Non-Augmented_Data/Question-Answer/Question-Answer_Dataset.csv--line-151: 1 (0.12%)
+  Non-Augmented_Data/Question-Answer/Question-Answer_Dataset.csv--line-152: 1 (0.12%)
+  Non-Augmented_Data/Question-Answer/Question-Answer_Dataset.csv--line-153: 1 (0.12%)
+  Non-Augmented_Data/Question-Answer/Question-Answer_Dataset.csv--line-154: 1 (0.12%)
+  Non-Augmented_Data/Question-Answer/Question-Answer_Dataset.csv--line-155: 1 (0.12%)
+  Non-Augmented_Data/Question-Answer/Question-Answer_Dataset.csv--line-156: 1 (0.12%)
+  Non-Augmented_Data/Question-Answer/Question-Answer_Dataset.csv--line-157: 1 (0.12%)
+  Non-Augmented_Data/Question-Answer/Question-Answer_Dataset.csv--line-158: 1 (0.12%)
+  Non-Augmented_Data/Question-Answer/Question-Answer_Dataset.csv--line-159: 1 (0.12%)
+  Non-Augmented_Data/Question-Answer/Question-Answer_Dataset.csv--line-160: 1 (0.12%)
+  Non-Augmented_Data/Question-Answer/Question-Answer_Dataset.csv--line-161: 1 (0.12%)
+  Non-Augmented_Data/Question-Answer/Question-Answer_Dataset.csv--line-162: 1 (0.12%)
+  Non-Augmented_Data/Question-Answer/Question-Answer_Dataset.csv--line-163: 1 (0.12%)
+  Non-Augmented_Data/Question-Answer/Question-Answer_Dataset.csv--line-164: 1 (0.12%)
+  Non-Augmented_Data/Question-Answer/Question-Answer_Dataset.csv--line-165: 1 (0.12%)
+  Non-Augmented_Data/Question-Answer/Question-Answer_Dataset.csv--line-166: 1 (0.12%)
+  Non-Augmented_Data/Question-Answer/Question-Answer_Dataset.csv--line-167: 1 (0.12%)
+  Non-Augmented_Data/Question-Answer/Question-Answer_Dataset.csv--line-168: 1 (0.12%)
+  Non-Augmented_Data/Question-Answer/Question-Answer_Dataset.csv--line-169: 1 (0.12%)
+  Non-Augmented_Data/Question-Answer/Question-Answer_Dataset.csv--line-170: 1 (0.12%)
+  Non-Augmented_Data/Question-Answer/Question-Answer_Dataset.csv--line-171: 1 (0.12%)
+  Non-Augmented_Data/Question-Answer/Question-Answer_Dataset.csv--line-172: 1 (0.12%)
+  Non-Augmented_Data/Question-Answer/Question-Answer_Dataset.csv--line-173: 1 (0.12%)
+  Non-Augmented_Data/Question-Answer/Question-Answer_Dataset.csv--line-174: 1 (0.12%)
+  Non-Augmented_Data/Question-Answer/Question-Answer_Dataset.csv--line-175: 1 (0.12%)
+  Non-Augmented_Data/Question-Answer/Question-Answer_Dataset.csv--line-176: 1 (0.12%)
+  Non-Augmented_Data/Question-Answer/Question-Answer_Dataset.csv--line-177: 1 (0.12%)
+  Non-Augmented_Data/Question-Answer/Question-Answer_Dataset.csv--line-178: 1 (0.12%)
+  Non-Augmented_Data/Question-Answer/Question-Answer_Dataset.csv--line-179: 1 (0.12%)
+  Non-Augmented_Data/Question-Answer/Question-Answer_Dataset.csv--line-180: 1 (0.12%)
+  Non-Augmented_Data/Question-Answer/Question-Answer_Dataset.csv--line-181: 1 (0.12%)
+  Non-Augmented_Data/Question-Answer/Question-Answer_Dataset.csv--line-182: 1 (0.12%)
+  Non-Augmented_Data/Question-Answer/Question-Answer_Dataset.csv--line-183: 1 (0.12%)
+  Non-Augmented_Data/Question-Answer/Question-Answer_Dataset.csv--line-184: 1 (0.12%)
+  Non-Augmented_Data/Question-Answer/Question-Answer_Dataset.csv--line-185: 1 (0.12%)
+  Non-Augmented_Data/Question-Answer/Question-Answer_Dataset.csv--line-186: 1 (0.12%)
+  Non-Augmented_Data/Question-Answer/Question-Answer_Dataset.csv--line-187: 1 (0.12%)
+  Non-Augmented_Data/Question-Answer/Question-Answer_Dataset.csv--line-188: 1 (0.12%)
+  Non-Augmented_Data/Question-Answer/Question-Answer_Dataset.csv--line-189: 1 (0.12%)
+  Non-Augmented_Data/Question-Answer/Question-Answer_Dataset.csv--line-192: 1 (0.12%)
+  Non-Augmented_Data/Question-Answer/Question-Answer_Dataset.csv--line-193: 1 (0.12%)
+  Non-Augmented_Data/Question-Answer/Question-Answer_Dataset.csv--line-195: 1 (0.12%)
