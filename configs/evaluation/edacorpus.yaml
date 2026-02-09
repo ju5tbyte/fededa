@@ -43,7 +43,7 @@ llm:
 
     First, provide your detailed analysis and reasoning about the prediction quality.
     Then, at the very end of your response, output the final score in the format: [[score]]
-    where score is a float between 0.0 (totally wrong) and 1.0 (totally right).
+    where the correctness score is 0.0 (totally wrong), 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, or 1.0 (totally right).
 
     Question: {question}
     Ground truth: {ground_truth}
