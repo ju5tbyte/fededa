@@ -17,6 +17,9 @@ Example usage:
     # Using Qwen3-VL Thinking model
     python scripts/augment_dataset_circuit_understanding.py data/finetune.json --model Qwen/Qwen3-VL-30B-A3B-Thinking
 
+    # Using VLLM with 4-bit quantization
+    python scripts/augment_dataset_circuit_understanding.py data/finetune.json --model Qwen/Qwen3-VL-30B-A3B-Instruct --quantization 4bit
+
     # Augment only 50%% of the data
     python scripts/augment_dataset_circuit_understanding.py data/finetune.json --model gpt-4o --ratio 0.5
 
@@ -33,12 +36,15 @@ import os
 import random
 import re
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 
 import mimetypes
 from openai import AsyncOpenAI
 
 from vllm import LLM, SamplingParams
+from vllm.model_executor.layers.quantization.bitsandbytes import (
+    BitsAndBytesConfig,
+)
 
 from tqdm import tqdm
 from tqdm.asyncio import tqdm as tqdm_async
@@ -351,12 +357,13 @@ def process_with_vllm(
     max_tokens: int = DEFAULT_MAX_TOKENS,
     temperature: float = DEFAULT_TEMPERATURE,
     batch_size: int = 1,
+    quantization: Optional[str] = None,
 ) -> list[dict[str, Any]]:
     """Process items using local VLLM.
 
     Supports multimodal models like Qwen3-VL. Automatically handles
     <think> tags for Thinking model variants. Supports batch processing
-    for improved throughput.
+    for improved throughput and quantization for memory efficiency.
 
     Args:
         model_name: Local model path or HuggingFace model ID.
@@ -365,12 +372,26 @@ def process_with_vllm(
         max_tokens: Maximum tokens to generate.
         temperature: Sampling temperature.
         batch_size: Number of items to process in a batch. Default: 1.
+        quantization: Quantization method ('4bit' or '8bit' using BitsAndBytes). Default: None.
 
     Returns:
         List of processed items with augmented reasoning.
     """
     logger.info(f"Initializing VLLM with model: {model_name}")
-    llm = LLM(model=model_name, trust_remote_code=True)
+    quantization_config = None
+    if quantization == "4bit":
+        quantization_config = BitsAndBytesConfig(load_in_4bit=True)
+        logger.info("Using 4-bit quantization with BitsAndBytes")
+    elif quantization == "8bit":
+        quantization_config = BitsAndBytesConfig(load_in_8bit=True)
+        logger.info("Using 8-bit quantization with BitsAndBytes")
+
+    llm = LLM(
+        model=model_name,
+        trust_remote_code=True,
+        quantization="bitsandbytes" if quantization_config else None,
+        quantization_config=quantization_config,
+    )
     sampling_params = SamplingParams(
         temperature=temperature, max_tokens=max_tokens
     )
@@ -543,6 +564,9 @@ Examples:
   # Using Qwen3-VL Thinking model
   python %(prog)s data/finetune.json --model Qwen/Qwen3-VL-30B-A3B-Thinking
 
+  # Using VLLM with 4-bit quantization
+  python %(prog)s data/finetune.json --model Qwen/Qwen3-VL-30B-A3B-Instruct --quantization 4bit
+
   # Augment only 50%% of the data
   python %(prog)s data/finetune.json --model gpt-4o --ratio 0.5
 
@@ -589,6 +613,13 @@ Examples:
         type=int,
         default=1,
         help="Batch size for VLLM processing. Higher values improve throughput but require more memory. Default: 1",
+    )
+    parser.add_argument(
+        "--quantization",
+        type=str,
+        default=None,
+        choices=["4bit", "8bit"],
+        help="Quantization method for VLLM. Options: 4bit, 8bit. Default: None",
     )
     parser.add_argument(
         "--max-concurrent",
@@ -642,6 +673,7 @@ Examples:
             max_tokens=args.max_tokens,
             temperature=args.temperature,
             batch_size=args.batch_size,
+            quantization=args.quantization,
         )
 
     # Save output
