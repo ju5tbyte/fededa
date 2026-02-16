@@ -10,3 +10,9 @@
 [submodule "external/EDA-Corpus"]
 	path = external/EDA-Corpus
 	url = https://github.com/OpenROAD-Assistant/EDA-Corpus.git
+[submodule "external/ElectroVizQA"]
+	path = external/ElectroVizQA
+	url = https://github.com/Pragati-Meshram/ElectroVizQA.git
+[submodule "external/Qwen3-VL"]
+	path = external/Qwen3-VL
+	url = https://github.com/QwenLM/Qwen3-VL.git
