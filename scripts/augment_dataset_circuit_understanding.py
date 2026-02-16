@@ -42,9 +42,6 @@ import mimetypes
 from openai import AsyncOpenAI
 
 from vllm import LLM, SamplingParams
-from vllm.model_executor.layers.quantization.bitsandbytes import (
-    BitsAndBytesConfig,
-)
 
 from tqdm import tqdm
 from tqdm.asyncio import tqdm as tqdm_async
@@ -378,19 +375,18 @@ def process_with_vllm(
         List of processed items with augmented reasoning.
     """
     logger.info(f"Initializing VLLM with model: {model_name}")
-    quantization_config = None
-    if quantization == "4bit":
-        quantization_config = BitsAndBytesConfig(load_in_4bit=True)
+    load_in_4bit = quantization == "4bit"
+    load_in_8bit = quantization == "8bit"
+    if load_in_4bit:
         logger.info("Using 4-bit quantization with BitsAndBytes")
-    elif quantization == "8bit":
-        quantization_config = BitsAndBytesConfig(load_in_8bit=True)
+    elif load_in_8bit:
         logger.info("Using 8-bit quantization with BitsAndBytes")
 
     llm = LLM(
         model=model_name,
         trust_remote_code=True,
-        quantization="bitsandbytes" if quantization_config else None,
-        quantization_config=quantization_config,
+        max_model_len=max_tokens,
+        allowed_local_media_path=image_base_dir,
     )
     sampling_params = SamplingParams(
         temperature=temperature, max_tokens=max_tokens
@@ -440,14 +436,14 @@ def process_with_vllm(
             prompt = generate_augment_prompt(question_text, original_answer)
 
             # Construct conversation for VLLM
-            # Note: VLLM uses "image_url" type for local file paths
+            # Note: VLLM requires file:// URL for local file paths
             conversation = [
                 {
                     "role": "user",
                     "content": [
                         {
                             "type": "image_url",
-                            "image_url": {"url": abs_image_path},
+                            "image_url": {"url": f"file://{abs_image_path}"},
                         },
                         {"type": "text", "text": prompt},
                     ],
@@ -642,7 +638,7 @@ Examples:
         raise FileNotFoundError(f"Input file not found: {args.input_file}")
 
     # Determine image base directory
-    image_base_dir = str(input_path.parent)
+    image_base_dir = str(input_path.parent.resolve())
 
     # Load dataset
     logger.info(f"Loading data from {args.input_file}...")

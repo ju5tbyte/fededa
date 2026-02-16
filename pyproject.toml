@@ -38,6 +38,7 @@ dependencies = [
     "py7zr",
     "evaluate",
     "prettytable",
+    "vllm",
 ]
 
 [tool.setuptools.packages.find]
