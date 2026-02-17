@@ -13,7 +13,7 @@ and generates QA datasets through a 3-step pipeline:
 
 Usage:
     python scripts/preprocess_dataset_digital_design_knowledge.py \
-    --input-pdf data/raw/digital_circuit_knowledge/my_doc.pdf \
+    --input-pdf data/raw/digital_design_knowledge/my_doc.pdf \
     --step all \
     --bounding-box "0.1,0,0.2,0" \
     --output-chunks-dir data/processed/my_chunks \
@@ -28,18 +28,18 @@ Usage:
     python scripts/preprocess_dataset_digital_design_knowledge.py \
     --step parse \
     --bounding-box "0.1,0,0.1,0" \
-    --input-pdf data/raw/digital_circuit_knowledge/specific_document.pdf
+    --input-pdf data/raw/digital_design_knowledge/specific_document.pdf
 
     python scripts/preprocess_dataset_digital_design_knowledge.py \
     --step generate \
-    --input-pdf data/raw/digital_circuit_knowledge/specific_document.pdf \
+    --input-pdf data/raw/digital_design_knowledge/specific_document.pdf \
     --tensor-parallel-size 2 \
     --temperature 0.7 \
     --max-tokens 4096
 
     python scripts/preprocess_dataset_digital_design_knowledge.py \
     --step filter \
-    --input-pdf data/raw/digital_circuit_knowledge/specific_document.pdf \
+    --input-pdf data/raw/digital_design_knowledge/specific_document.pdf \
     --tensor-parallel-size 2
 
 
@@ -745,7 +745,7 @@ def main():
     args = parser.parse_args()
 
     # Determine input PDFs
-    input_dir = Path("data/raw/digital_circuit_knowledge")
+    input_dir = Path("data/raw/digital_design_knowledge")
     if args.input_pdf:
         pdf_files = [Path(args.input_pdf)]
     else:
