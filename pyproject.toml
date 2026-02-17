@@ -39,6 +39,8 @@ dependencies = [
     "evaluate",
     "prettytable",
     "vllm",
+    "llama-parse",
+    "llama-index-core",
 ]
 
 [tool.setuptools.packages.find]
