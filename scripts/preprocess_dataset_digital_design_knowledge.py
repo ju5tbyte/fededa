@@ -6,7 +6,7 @@ This script processes PDF documents containing digital design knowledge
 and generates QA datasets through a 3-step pipeline:
 
 1. Parse PDFs using LlamaParse with semantic chunking
-2. Generate QA pairs (0 or 1 per chunk) using vLLM with Llama 3.3 70B AWQ
+2. Generate QA pairs (0 to 5 per chunk) using vLLM with Llama 3.3 70B AWQ
    - Only substantive technical knowledge generates questions
    - Text-only context: no figure-dependent questions
 3. Filter QA pairs for consistency using vLLM validation
@@ -71,12 +71,10 @@ logger = logging.getLogger(__name__)
 # Constants
 DEFAULT_MODEL = "casperhansen/llama-3.3-70b-instruct-awq"
 DEFAULT_TEMPERATURE = 0.7
-DEFAULT_MAX_TOKENS = (
-    2048  # Reduced since we generate at most 1 question per chunk
-)
+DEFAULT_MAX_TOKENS = 16384
 
 QUESTION_GENERATION_PROMPT = """You are an expert in digital design and electrical engineering.
-Based on the provided text chunk, generate either 0 or 1 question.
+Based on the provided text chunk, generate 0 to 5 questions.
 
 **Text Chunk:**
 {text_chunk}
@@ -90,20 +88,36 @@ Based on the provided text chunk, generate either 0 or 1 question.
    - Purely supplementary information without technical content
    - Figure/table captions that describe visual content
 
-**Question Guidelines (if generating):**
+**Question-Answer Generation Guidelines (if generating):**
 - The question should be answerable purely from the text content
 - Focus on concepts, principles, methodologies, and technical facts
 - Questions can reference figures indirectly if the textual description provides sufficient context
+- Answers should be concise and accurate
+
+**Number of Questions to Generate:**
+- Determine the number of questions (0 to 5) based on the richness of the content in the chunk
+- Ensure questions are diverse and cover different aspects of the content
+- Vary difficulty levels (easy, medium, hard) when generating multiple questions
 
 **Output Format (JSON):**
 {{
   "questions": []  // Empty array if no suitable question can be generated
 }}
 
-OR (if a valid question exists):
+OR (if valid questions exist):
 
 {{
   "questions": [
+    {{
+      "difficulty": "easy|medium|hard",
+      "question": "...",
+      "answer": "..."
+    }},
+    {{
+      "difficulty": "easy|medium|hard",
+      "question": "...",
+      "answer": "..."
+    }},
     {{
       "difficulty": "easy|medium|hard",
       "question": "...",
@@ -135,13 +149,13 @@ Provide your verdict:"""
 
 
 # JSON schema for guided generation
-# Updated: questions array can be empty (0 questions) or have 1 question
+# Updated: questions array can be empty (0 questions) or have up to 3 questions
 QUESTION_GENERATION_SCHEMA = {
     "type": "object",
     "properties": {
         "questions": {
             "type": "array",
-            "maxItems": 1,
+            "maxItems": 5,
             "items": {
                 "type": "object",
                 "properties": {
