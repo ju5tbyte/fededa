@@ -73,62 +73,87 @@ DEFAULT_MODEL = "casperhansen/llama-3.3-70b-instruct-awq"
 DEFAULT_TEMPERATURE = 0.7
 DEFAULT_MAX_TOKENS = 16384
 
-QUESTION_GENERATION_PROMPT = """You are an expert in digital design and electrical engineering.
-Based on the provided text chunk, generate 0 to 5 questions.
+QUESTION_GENERATION_PROMPT = """You are an expert professor in digital logic design, computer architecture, VLSI design, and general electrical and computer engineering.
+
+Your task: Read the text chunk below and generate high-quality questions that test **genuine understanding of concepts** in digital logic design, computer architecture, VLSI design, or related electrical/computer engineering topics. 
 
 **Text Chunk:**
 {text_chunk}
 
-**Strict Constraints (Read Carefully):**
-1. **No External Knowledge:** Generate questions ONLY if the answer is explicitly found within the text chunk. Do not define terms based on your own knowledge if the definition is not in the text.
-2. **Text-only context:** This chunk is from a PDF parse. Figures are missing. DO NOT generate questions asking about visual elements (e.g., "What does Figure 3 show?", "Draw the circuit").
-3. **Avoid Trivial Metadata Questions:** DO NOT ask about the document structure.
-   - BAD: "What is the topic of Chapter 5?", "What is covered in section 2.3?"
-   - GOOD: "How does a D-latch store state?", "What is the difference between static and dynamic memory?"
-4. **Skip Noise:** Return an empty array if the chunk contains:
-   - Table of Contents, Lists of Figures, or Indices (lists of keywords without definitions)
-   - Copyright notices, headers, footers, or references
+**CRITICAL RULES:**
 
-**Question-Answer Generation Guidelines:**
-- Questions must be self-contained and answerable **solely** from the provided text.
-- If the text is an Index or Glossary list (e.g., "DeMorgan's Law... 22, 32"), DO NOT generate a question like "What is DeMorgan's Law?" because the definition is missing.
-- Answers should be concise, accurate, and extracted from the text.
+1. **Standalone Principle:** Every question must make complete sense ONLY WITH the domain knowledge of domains above, WITHOUT the specific and detailed context of provided text chunk.
+   - BAD: "What does the author describe as the advantage of CMOS?"  
+   - BAD: "According to the text, how many inputs does the circuit have?"
+   - GOOD: "Why do CMOS circuits consume less static power than NMOS-only circuits?"
+   - GOOD: "Given F = A'B + AB', derive an equivalent expression using NAND gates only."
+   - GOOD: "Explain how a 5-stage RISC pipeline handles a data hazard caused by a RAW dependency between two consecutive instructions."
+   - GOOD: "Why is latch-up a concern in bulk CMOS processes, and how does guard ring placement mitigate it?"
 
-**Number of Questions to Generate:**
-- Generate 0 if the text is low quality, noise, or purely metadata.
-- Otherwise, generate 1-5 diverse questions.
+2. **Question Difficulty Tiers — target distribution: easy 30%, medium 40%, hard 30%:**
+   - **easy**: Define a concept or recall a key property.  
+     Example: "What is the difference between a latch and a flip-flop?"
+     Example: "What is the purpose of the program counter in a CPU?"
+     Example: "What is the difference between an n-well and a p-well CMOS process?"
+   - **medium**: Apply a concept, compare alternatives, or explain *why* something works.  
+     Example: "Why is a synchronous counter preferred over an asynchronous (ripple) counter in high-speed designs?"
+     Example: "Compare write-through and write-back cache policies in terms of memory traffic and consistency."
+     Example: "Explain why dynamic power dissipation in CMOS is proportional to the switching frequency and the square of the supply voltage."
+   - **hard**: Multi-step reasoning, design/optimization, or synthesis across concepts.  
+     Example: "Design a minimal two-level SOP circuit for F(A,B,C) = Σm(1,2,5,6) using a Karnaugh map, and state how many literals the minimized expression contains."
+     Example: "A processor has a 5-stage pipeline. Given the instruction sequence ADD R1,R2,R3 followed by SUB R4,R1,R5, describe the data hazard that arises, and compare the cycle cost of resolving it via stalling versus forwarding."
+     Example: "Given a CMOS inverter with (W/L)_p = 2(W/L)_n, explain how to size the transistors so that the switching threshold is at VDD/2, and describe how this sizing affects rise and fall times."
+
+3. **Full QA Pair Example (for reference on expected quality):**
+   - **difficulty:** "medium"
+   - **topic:** "Cache Memory"
+   - **question:** "A direct-mapped cache has 16 cache lines and uses a block size of 4 words. If the CPU issues a byte address of 0x0000_02B4, explain how the address is partitioned into tag, index, and offset fields, and identify which cache line this address maps to."
+   - **answer:** "With 4 words per block (16 bytes), the byte offset field is log2(16) = 4 bits. With 16 cache lines, the index field is log2(16) = 4 bits. The remaining upper bits form the tag. For address 0x0000_02B4 = 0000...0010_1011_0100 in binary, the lowest 4 bits (0100) are the byte offset, the next 4 bits (1011 = 11 decimal) are the index, so this address maps to cache line 11. The tag is the remaining upper bits (0x0000_02)."
+
+4. **No Duplicate Concepts:** Each question must test a **distinct concept or reasoning skill**. Do not generate multiple questions that cover the same idea from slightly different angles. If the chunk only contains one substantive concept, generate fewer questions rather than producing semantic duplicates.
+
+5. **Forbidden Question Types:**
+   - Questions about the textbook itself (chapter titles, section numbers, what the author says)
+   - Questions about figures, tables, or diagrams
+   - Pure definition lookups that any glossary could answer (unless the concept is nuanced)
+   - Yes/No questions without requiring justification
+
+6. **Encouraged Question Types:**
+   - "Why" and "How" questions that require reasoning
+   - "Compare and contrast" between related concepts
+   - "Given [scenario/expression/circuit description/instruction sequence], determine/simplify/analyze..."
+   - Troubleshooting: "If [something goes wrong], what is the likely cause?"
+   - Design questions: "How would you implement X using Y?"
+
+7. **Answer Quality:**
+   - Answers should be **technically correct and self-contained** — a knowledgeable person should verify them without needing the textbook.
+   - For computation/derivation questions, show key steps.
+   - Keep answers concise but complete (2-6 sentences typically).
+
+8. **Skip Noise:** Return empty array if the chunk is TOC, index, references, copyright, or has no substantive technical content.
 
 **Output Format (JSON):**
 {{
   "questions": []  // Return empty if content is not suitable based on constraints
 }}
-
 OR (if valid content exists, depending on the chunk, you might generate 1~5 questions):
-
 {{
   "questions": [
     {{
       "difficulty": "easy|medium|hard",
-      "question": "...",
-      "answer": "..."
-    }},
-    {{
-      "difficulty": "easy|medium|hard",
-      "question": "...",
-      "answer": "..."
-    }},
-    {{
-      "difficulty": "easy|medium|hard",
+      "topic": "brief topic tag, e.g. 'Karnaugh Maps', 'Cache Coherence', 'CMOS Inverter Sizing', 'Pipelining'",
       "question": "...",
       "answer": "..."
     }}
   ]
 }}
 
-Generate question and answer now:"""
+Generate 0-5 questions now:"""
 
-VALIDATION_PROMPT = """You are a strict auditor for an educational RAG dataset.
-Evaluate whether the following QA pair is **grounded solely** in the provided text.
+
+VALIDATION_PROMPT = """You are a strict auditor for a digital logic design, computer architecture, VLSI design, and electrical/computer engineering fine-tuning dataset.
+
+Evaluate whether the following QA pair is suitable for teaching students to learn the domain knowledge.
 
 **Original Text:**
 {text_chunk}
@@ -136,16 +161,21 @@ Evaluate whether the following QA pair is **grounded solely** in the provided te
 **Question:** {question}
 **Proposed Answer:** {answer}
 
-**Strict Evaluation Criteria (If any is violated, return FAIL):**
-1. **Grounding Check:** Does the text explicitly contain the answer? If the answer requires external knowledge (e.g., the text is just a keyword list like an Index, but the answer defines the term), you MUST return FAIL.
-2. **Visual Dependency:** Does the question ask about a Figure, Image, or Diagram that is not visible in the text? (e.g., "What is in Figure 2-1?") -> FAIL.
-3. **Triviality Check:** Is the question asking about metadata rather than content? (e.g., "What is the title of this section?", "What page is this?") -> FAIL.
-4. **Accuracy:** Is the answer consistent with the provided text?
+**Evaluation Criteria:**
+
+1. **Standalone Test:** Can this question be understood and answered WITH the domain knowledge of digital logic design, computer architecture, VLSI design, or general electrical/computer engineering, WITHOUT reading the original text? If the question references "the text", "the author", "the example above", "Figure X", or any textbook-specific context → **FAIL**.
+
+2. **Technical Correctness:** Is the answer factually and technically accurate for its respective domain (digital logic, computer architecture, VLSI, or EE/CE)? If the answer contains errors, misleading simplifications, or hallucinated facts → **FAIL**.
+
+3. **Non-Triviality:** Does the question require meaningful knowledge or reasoning? Pure metadata questions ("What chapter covers X?") or questions answerable by common sense alone → **FAIL**.
+
+4. **Relevance:** Is the question about digital logic design, computer architecture, VLSI design, or closely related EE/CS topics? Off-topic → **FAIL**.
+
+5. **Answer Completeness:** Does the answer adequately address the question? A vague or incomplete answer → **FAIL**.
 
 **Output Format (JSON):**
-First, provide your reasoning for the validation decision. Then, provide the final result.
 {{
-  "reason": "Detailed explanation of why this QA pair passes or fails validation. Be specific about which criteria were checked and why.",
+  "reason": "Explain which criteria passed/failed and why.",
   "result": "PASS" or "FAIL"
 }}
 
