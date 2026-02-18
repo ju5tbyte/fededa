@@ -79,32 +79,31 @@ Based on the provided text chunk, generate 0 to 5 questions.
 **Text Chunk:**
 {text_chunk}
 
-**Important Constraints:**
-1. **Text-only context**: This chunk is parsed from a textbook with text-only extraction. Figures, diagrams, and images are NOT available. Therefore, DO NOT generate questions that require visual information from figures (e.g., "What is shown in Figure 3?", "Describe the waveform in the diagram").
-2. **Knowledge-based questions only**: Generate questions only if the chunk contains substantive technical knowledge about digital design. Skip chunks that contain only:
-   - Table of contents, headers, or section titles
-   - References or bibliography
-   - Page numbers or formatting artifacts
-   - Purely supplementary information without technical content
-   - Figure/table captions that describe visual content
+**Strict Constraints (Read Carefully):**
+1. **No External Knowledge:** Generate questions ONLY if the answer is explicitly found within the text chunk. Do not define terms based on your own knowledge if the definition is not in the text.
+2. **Text-only context:** This chunk is from a PDF parse. Figures are missing. DO NOT generate questions asking about visual elements (e.g., "What does Figure 3 show?", "Draw the circuit").
+3. **Avoid Trivial Metadata Questions:** DO NOT ask about the document structure.
+   - BAD: "What is the topic of Chapter 5?", "What is covered in section 2.3?"
+   - GOOD: "How does a D-latch store state?", "What is the difference between static and dynamic memory?"
+4. **Skip Noise:** Return an empty array if the chunk contains:
+   - Table of Contents, Lists of Figures, or Indices (lists of keywords without definitions)
+   - Copyright notices, headers, footers, or references
 
-**Question-Answer Generation Guidelines (if generating):**
-- The question should be answerable purely from the text content
-- Focus on concepts, principles, methodologies, and technical facts
-- Questions can reference figures indirectly if the textual description provides sufficient context
-- Answers should be concise and accurate
+**Question-Answer Generation Guidelines:**
+- Questions must be self-contained and answerable **solely** from the provided text.
+- If the text is an Index or Glossary list (e.g., "DeMorgan's Law... 22, 32"), DO NOT generate a question like "What is DeMorgan's Law?" because the definition is missing.
+- Answers should be concise, accurate, and extracted from the text.
 
 **Number of Questions to Generate:**
-- Determine the number of questions (0 to 5) based on the richness of the content in the chunk
-- Ensure questions are diverse and cover different aspects of the content
-- Vary difficulty levels (easy, medium, hard) when generating multiple questions
+- Generate 0 if the text is low quality, noise, or purely metadata.
+- Otherwise, generate 1-5 diverse questions.
 
 **Output Format (JSON):**
 {{
-  "questions": []  // Empty array if no suitable question can be generated
+  "questions": []  // Return empty if content is not suitable based on constraints
 }}
 
-OR (if valid questions exist):
+OR (if valid content exists, depending on the chunk, you might generate 1~5 questions):
 
 {{
   "questions": [
@@ -126,10 +125,10 @@ OR (if valid questions exist):
   ]
 }}
 
-Generate question and answer now (or return empty questions array if not applicable):"""
+Generate question and answer now:"""
 
-VALIDATION_PROMPT = """You are a quality assurance expert for educational content.
-Evaluate whether the following QA pair is consistent with and supported by the original text.
+VALIDATION_PROMPT = """You are a strict auditor for an educational RAG dataset.
+Evaluate whether the following QA pair is **grounded solely** in the provided text.
 
 **Original Text:**
 {text_chunk}
@@ -137,19 +136,41 @@ Evaluate whether the following QA pair is consistent with and supported by the o
 **Question:** {question}
 **Proposed Answer:** {answer}
 
-**Evaluation Criteria:**
-1. Is the question relevant to the text?
-2. Is the answer factually correct based on the text?
-3. Is the answer complete and appropriate for the question?
-4. Is there any contradiction between the answer and the text?
+**Strict Evaluation Criteria (If any is violated, return FAIL):**
+1. **Grounding Check:** Does the text explicitly contain the answer? If the answer requires external knowledge (e.g., the text is just a keyword list like an Index, but the answer defines the term), you MUST return FAIL.
+2. **Visual Dependency:** Does the question ask about a Figure, Image, or Diagram that is not visible in the text? (e.g., "What is in Figure 2-1?") -> FAIL.
+3. **Triviality Check:** Is the question asking about metadata rather than content? (e.g., "What is the title of this section?", "What page is this?") -> FAIL.
+4. **Accuracy:** Is the answer consistent with the provided text?
 
-**Output:** Respond with only one word: PASS or FAIL
+**Output Format (JSON):**
+First, provide your reasoning for the validation decision. Then, provide the final result.
+{{
+  "reason": "Detailed explanation of why this QA pair passes or fails validation. Be specific about which criteria were checked and why.",
+  "result": "PASS" or "FAIL"
+}}
 
 Provide your verdict:"""
 
 
-# JSON schema for guided generation
-# Updated: questions array can be empty (0 questions) or have up to 3 questions
+# JSON schema for guided generation - Validation
+VALIDATION_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "reason": {
+            "type": "string",
+            "description": "Detailed explanation for the validation decision",
+        },
+        "result": {
+            "type": "string",
+            "enum": ["PASS", "FAIL"],
+        },
+    },
+    "required": ["reason", "result"],
+}
+
+
+# JSON schema for guided generation - Question Generation
+# Updated: questions array can be empty (0 questions) or have up to 5 questions
 QUESTION_GENERATION_SCHEMA = {
     "type": "object",
     "properties": {
@@ -612,11 +633,21 @@ def validate_qa_pairs_batch(
             f"Validation response for qa[{qa_idx}][{q_idx}]: '{response}'"
         )
 
-        if response == "PASS":
-            result, reason = "PASS", ""
+        # Parse JSON response from structured output
+        try:
+            validation_data = json.loads(response)
+            result = validation_data.get("result", "FAIL")
+            reason = validation_data.get("reason", "")
+        except json.JSONDecodeError as e:
+            logger.warning(
+                f"Failed to parse validation response for qa[{qa_idx}][{q_idx}]: {e}"
+            )
+            # Fallback: treat as FAIL if parsing fails
+            result, reason = "FAIL", f"JSON parse error: {e}"
+
+        if result == "PASS":
             pass_count += 1
         else:
-            result, reason = "FAIL", ""
             fail_count += 1
 
         # Store validation result directly in the question object
@@ -793,11 +824,11 @@ def main():
 
         if args.step in ["all", "filter"]:
             structured_outputs_params_val = StructuredOutputsParams(
-                choice=["PASS", "FAIL"]
+                json=VALIDATION_SCHEMA
             )
             val_sampling_params = SamplingParams(
                 temperature=0.0,  # Deterministic for validation
-                max_tokens=50,  # Short response
+                max_tokens=512,  # Increased for reason text
                 structured_outputs=structured_outputs_params_val,
             )
 
