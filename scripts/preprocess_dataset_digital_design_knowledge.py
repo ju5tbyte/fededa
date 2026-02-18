@@ -663,16 +663,18 @@ def validate_qa_pairs_batch(
 
 def filter_qa_pairs(qa_data: Dict) -> Dict:
     """
-    Filter QA pairs that have validation result stored, keeping only PASS results.
+    Collect all QA pairs with validation results for debugging.
+    Includes both PASS and FAIL results.
 
     Args:
         qa_data: Original QA data with validation results stored in questions
 
     Returns:
-        Filtered QA data dictionary
+        QA data dictionary with all validation results
     """
-    filtered_qa_pairs = []
-    filtered_count = 0
+    all_qa_pairs = []
+    pass_count = 0
+    fail_count = 0
 
     for qa_pair in qa_data["qa_pairs"]:
         for question in qa_pair["questions"]:
@@ -680,27 +682,30 @@ def filter_qa_pairs(qa_data: Dict) -> Dict:
             result = validation.get("result", "FAIL")
 
             if result == "PASS":
-                filtered_qa_pair = {
-                    "id": len(filtered_qa_pairs),
-                    "chunk_id": qa_pair["chunk_id"],
-                    "original_chunk": qa_pair["original_chunk"],
-                    "difficulty": question["difficulty"],
-                    "question": question["question"],
-                    "answer": question["answer"],
-                    "validation": validation,
-                }
-                filtered_qa_pairs.append(filtered_qa_pair)
+                pass_count += 1
             else:
-                filtered_count += 1
+                fail_count += 1
 
-    filtered_data = {
+            qa_item = {
+                "id": len(all_qa_pairs),
+                "chunk_id": qa_pair["chunk_id"],
+                "original_chunk": qa_pair["original_chunk"],
+                "difficulty": question["difficulty"],
+                "question": question["question"],
+                "answer": question["answer"],
+                "validation": validation,
+            }
+            all_qa_pairs.append(qa_item)
+
+    result_data = {
         "source_file": qa_data["source_file"],
-        "total_qa_pairs": len(filtered_qa_pairs),
-        "filtered_count": filtered_count,
-        "qa_pairs": filtered_qa_pairs,
+        "total_qa_pairs": len(all_qa_pairs),
+        "pass_count": pass_count,
+        "fail_count": fail_count,
+        "qa_pairs": all_qa_pairs,
     }
 
-    return filtered_data
+    return result_data
 
 
 def main():
