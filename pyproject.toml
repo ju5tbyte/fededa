@@ -43,6 +43,7 @@ dependencies = [
     "llama-index-core",
     "langchain-text-splitters",
     "llama-cpp-python",
+    "pdf2image",
 ]
 
 [tool.setuptools.packages.find]

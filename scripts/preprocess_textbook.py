@@ -1,36 +1,45 @@
 #!/usr/bin/env python3
 """
 Textbook Preprocessing Script
- 
-This script processes a PDF textbook file, extracts text using LlamaParse,
-converts to markdown, merges all pages into a single text, and performs
-markdown header-based chunking.
- 
+
+This script processes a PDF textbook file, extracts text using LlamaParse
+or DeepSeek-OCR (via vllm), converts to markdown, merges all pages into
+a single text, and performs markdown header-based chunking.
+
 Usage:
-    # Full pipeline (parse PDF + chunking)
+    # Full pipeline with DeepSeek-OCR (vllm)
+    python scripts/preprocess_textbook.py \
+        --file data/raw/digital_design_knowledge/vlsi_design.pdf \
+        --output-dir data/processed/digital_design_knowledge_source \
+        --step all \
+        --parser vllm
+
+    # Full pipeline with LlamaParse
     python scripts/preprocess_textbook.py \
         --file data/raw/digital_design_knowledge/vlsi_design.pdf \
         --output-dir data/processed/digital_design_knowledge_source \
         --bbox "0.125,0,0,0" \
-        --step all
+        --step all \
+        --parser llamaparse
 
-    # Only parse PDF to markdown
+    # Only parse PDF to markdown (DeepSeek-OCR)
     python scripts/preprocess_textbook.py \
-        --file data/raw/digital_design_knowledge/an_animated_introduction_to_digital_logic_design.pdf \
-        --output-md data/processed/digital_design_knowledge_source/an_animated_introduction_to_digital_logic_design.md \
-        --step parse
+        --file data/raw/digital_design_knowledge/vlsi_design.pdf \
+        --output-md data/processed/digital_design_knowledge_source/vlsi_design.md \
+        --step parse \
+        --parser vllm
 
-    # Only parse PDF to markdown with bounding box
+    # Only parse PDF to markdown (LlamaParse with bounding box)
     python scripts/preprocess_textbook.py \
-        --file data/raw/digital_design_knowledge/an_animated_introduction_to_digital_logic_design.pdf \
-        --output-md data/processed/digital_design_knowledge_source/an_animated_introduction_to_digital_logic_design.md \
+        --file data/raw/digital_design_knowledge/vlsi_design.pdf \
+        --output-md data/processed/digital_design_knowledge_source/vlsi_design.md \
         --step parse \
         --bbox "0.1,0,0.1,0"
 
     # Only chunk existing markdown file
     python scripts/preprocess_textbook.py \
-        --file data/processed/digital_design_knowledge_source/an_animated_introduction_to_digital_logic_design.md \
-        --output-json data/processed/digital_design_knowledge_source/an_animated_introduction_to_digital_logic_design.json \
+        --file data/processed/digital_design_knowledge_source/vlsi_design.md \
+        --output-json data/processed/digital_design_knowledge_source/vlsi_design.json \
         --step chunking
 """
 
@@ -44,6 +53,18 @@ from typing import List, Optional
 from llama_parse import LlamaParse
 from langchain_text_splitters import MarkdownHeaderTextSplitter
 
+# For vllm OCR
+from PIL import Image
+from pdf2image import convert_from_path
+
+# vllm imports
+try:
+    from vllm import LLM, SamplingParams
+
+    VLLM_AVAILABLE = True
+except ImportError:
+    VLLM_AVAILABLE = False
+
 # Markdown headers to split on
 MARKDOWN_HEADERS = [
     ("#", "Header 1"),
@@ -54,6 +75,27 @@ MARKDOWN_HEADERS = [
     ("######", "Header 6"),
 ]
 
+# OCR prompt for vllm
+OCR_PROMPT = """<|image|>\n<|grounding|>You are an expert OCR and document parsing assistant specializing in complex academic textbooks. Your task is to extract text and mathematical equations from the provided textbook page image and convert them into clean Markdown format.
+
+
+Adhere STRICTLY to the following rules:
+
+1. **Text and Math Only**: Extract only the textual content, section headings, and mathematical equations.
+
+2. **Heading Consistency**: Accurately infer Markdown heading levels (`#`, `##`, `###`, etc.) based on typography (font size, weight) and hierarchical numbering conventions (e.g., "1. Chapter" -> `#`, "1.1 Section" -> `##`, "1.1.1 Subsection" -> `###`). Apply this logic strictly to ensure structural consistency across isolated pages.
+
+3. **Eliminate Running Headers/Footers**: Strictly distinguish between actual section headings and running headers/footers (e.g., the book title, chapter title, or author name repeating at the very top or bottom margins). Completely OMIT running headers, footers, and page numbers.
+
+4. **Cross-Page Continuity**: Maintain the logical reading flow. If the first sentence or paragraph clearly continues from the previous page, output it as normal inline text without adding artificial line breaks, indentations, or new paragraph markers at the beginning.
+
+5. **Ignore Visuals**: Completely ignore all images, diagrams, charts, circuit schematics, and UI captures. Do NOT generate any descriptive text or placeholders.
+
+6. **LaTeX Formatting**: Convert all mathematical symbols, expressions, and Boolean logic formulas into LaTeX. Use `$` for inline equations and `$$` for standalone block equations.
+
+7. **No Filler**: Output strictly the converted Markdown content. Do not include introductory or concluding conversational remarks."""
+
+
 # Configure logging
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
@@ -61,16 +103,155 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-def parse_pdf_to_markdown(pdf_path: Path, bbox: Optional[str] = None) -> str:
-    """Parse PDF using LlamaParse and merge all pages into a single markdown text.
+def convert_pdf_to_images(pdf_path: Path, dpi: int = 150) -> List[Image.Image]:
+    """Convert PDF pages to PIL Images.
 
     Args:
         pdf_path: Path to the PDF file
-        bbox: Bounding box string in format "top,left,bottom,right" (default: None)
+        dpi: Resolution for image conversion (default: 150)
+
+    Returns:
+        List of PIL Image objects
+    """
+    logger.info(f"Converting PDF to images: {pdf_path} (dpi={dpi})")
+    try:
+        images = convert_from_path(str(pdf_path), dpi=dpi)
+        logger.info(f"Converted {len(images)} pages to images")
+        return images
+    except Exception as e:
+        logger.error(f"Failed to convert PDF to images: {e}")
+        raise
+
+
+def parse_pdf_to_markdown_vllm(
+    pdf_path: Path,
+    model_name: str = "deepseek-ai/DeepSeek-OCR",
+    tensor_parallel_size: int = 1,
+) -> str:
+    """Parse PDF using vllm with VLM for OCR and convert to markdown.
+
+    Args:
+        pdf_path: Path to the PDF file
+        model_name: vllm model name for OCR (default: deepseek-ai/DeepSeek-OCR)
+        tensor_parallel_size: Tensor parallel size for vllm (default: 1)
 
     Returns:
         Merged markdown text from all pages
     """
+    if not VLLM_AVAILABLE:
+        raise ImportError(
+            "vllm is not installed. Install with: pip install vllm"
+        )
+
+    logger.info(f"Parsing PDF with vllm: {pdf_path} (model={model_name})")
+
+    # Convert PDF to images
+    images = convert_pdf_to_images(pdf_path)
+
+    # Initialize vllm LLM
+    logger.info(f"Initializing vllm LLM: {model_name}")
+
+    # Use DeepSeek-OCR specific implementation
+    try:
+        from vllm.model_executor.models.deepseek_ocr import (
+            NGramPerReqLogitsProcessor,
+        )
+
+        llm = LLM(
+            model=model_name,
+            tensor_parallel_size=tensor_parallel_size,
+            enforce_eager=True,
+            enable_prefix_caching=False,
+            mm_processor_cache_gb=0,
+            logits_processors=[NGramPerReqLogitsProcessor],
+        )
+    except ImportError as e:
+        logger.warning(
+            f"Failed to import NGramPerReqLogitsProcessor: {e}. "
+            "Falling back to default LLM initialization."
+        )
+        llm = LLM(
+            model=model_name,
+            tensor_parallel_size=tensor_parallel_size,
+            enforce_eager=True,
+        )
+
+    # DeepSeek-OCR format: batch processing
+    # Use user's prompt for OCR
+    prompt = OCR_PROMPT
+
+    model_inputs = []
+    for image in images:
+        image_rgb = image.convert("RGB")
+        model_inputs.append(
+            {
+                "prompt": prompt,
+                "multi_modal_data": {"image": image_rgb},
+            }
+        )
+
+    sampling_params = SamplingParams(
+        temperature=0.0,
+        max_tokens=8192,
+        extra_args=dict(
+            ngram_size=30,
+            window_size=90,
+            whitelist_token_ids={128821, 128822},  # <td>, </td>
+        ),
+        skip_special_tokens=False,
+    )
+
+    # Generate all pages in batch
+    logger.info(f"Processing {len(images)} pages in batch")
+    outputs = llm.generate(model_inputs, sampling_params)
+
+    # Extract text from outputs
+    all_markdown = []
+    for i, output in enumerate(outputs):
+        markdown_text = output.outputs[0].text.strip()
+        all_markdown.append(markdown_text)
+        logger.debug(
+            f"Page {i + 1} markdown length: {len(markdown_text)} chars"
+        )
+
+    # Merge all pages into a single markdown document
+    full_markdown = "\n\n".join(all_markdown)
+    logger.info(f"Merged markdown length: {len(full_markdown)} characters")
+
+    return full_markdown
+
+
+def parse_pdf_to_markdown(
+    pdf_path: Path,
+    bbox: Optional[str] = None,
+    parser_type: str = "llamaparse",
+    vllm_model: Optional[str] = None,
+    vllm_tensor_parallel_size: int = 1,
+) -> str:
+    """Parse PDF and merge all pages into a single markdown text.
+
+    Args:
+        pdf_path: Path to the PDF file
+        bbox: Bounding box string in format "top,left,bottom,right" (default: None)
+        parser_type: Parser type - "llamaparse" or "vllm" (default: "llamaparse")
+        vllm_model: vllm model name for OCR (required if parser_type is "vllm")
+        vllm_tensor_parallel_size: Tensor parallel size for vllm (default: 1)
+
+    Returns:
+        Merged markdown text from all pages
+    """
+    if parser_type == "vllm":
+        if not vllm_model:
+            raise ValueError(
+                "--vllm-model is required when using parser_type='vllm'"
+            )
+        return parse_pdf_to_markdown_vllm(
+            pdf_path=pdf_path,
+            model_name=vllm_model,
+            tensor_parallel_size=vllm_tensor_parallel_size,
+        )
+
+    # Default to LlamaParse
     logger.info(f"Parsing PDF: {pdf_path} (bbox={bbox})")
 
     api_key = os.environ.get("LLAMA_CLOUD_API_KEY")
@@ -249,8 +430,36 @@ def main():
         default=None,
         help="Bounding box for PDF parsing in format 'top,left,bottom,right' (e.g., '0.1,0,0.2,0')",
     )
+    parser.add_argument(
+        "--parser",
+        type=str,
+        choices=["llamaparse", "vllm"],
+        default="llamaparse",
+        help="Parser type: 'llamaparse' (default) or 'vllm' for local OCR with VLM",
+    )
+    parser.add_argument(
+        "--vllm-model",
+        type=str,
+        default=None,
+        help="vllm model name for OCR (required if --parser=vllm, e.g., 'Qwen/Qwen2-VL-7B-Instruct')",
+    )
+    parser.add_argument(
+        "--vllm-tensor-parallel-size",
+        type=int,
+        default=1,
+        help="Tensor parallel size for vllm (default: 1)",
+    )
 
     args = parser.parse_args()
+
+    # Validate parser-specific requirements
+    if args.parser == "vllm":
+        if not args.vllm_model:
+            parser.error("--vllm-model is required when --parser=vllm")
+        if not VLLM_AVAILABLE:
+            parser.error(
+                "vllm is not installed. Install with: pip install vllm"
+            )
 
     input_file = Path(args.file)
     if not input_file.exists():
@@ -302,7 +511,13 @@ def main():
 
     # Step 1: Parse PDF (if needed)
     if args.step in ["all", "parse"]:
-        full_text = parse_pdf_to_markdown(input_file, bbox=args.bbox)
+        full_text = parse_pdf_to_markdown(
+            pdf_path=input_file,
+            bbox=args.bbox,
+            parser_type=args.parser,
+            vllm_model=args.vllm_model,
+            vllm_tensor_parallel_size=args.vllm_tensor_parallel_size,
+        )
         # Save full markdown file
         if markdown_path is not None:
             markdown_path.parent.mkdir(parents=True, exist_ok=True)
