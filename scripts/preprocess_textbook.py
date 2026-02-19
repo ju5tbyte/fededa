@@ -10,7 +10,7 @@ Usage:
     # Full pipeline with DeepSeek-OCR (vllm)
     python scripts/preprocess_textbook.py \
         --file data/raw/digital_design_knowledge/vlsi_design.pdf \
-        --output-dir data/processed/digital_design_knowledge_source \
+        --output-dir data/processed/digital_design_knowledge_source_deepseek_ocr \
         --step all \
         --parser vllm
 
@@ -123,16 +123,18 @@ def convert_pdf_to_images(pdf_path: Path, dpi: int = 150) -> List[Image.Image]:
         raise
 
 
+# DeepSeek-OCR model name (hardcoded)
+DEEPSEEK_OCR_MODEL = "deepseek-ai/DeepSeek-OCR"
+
+
 def parse_pdf_to_markdown_vllm(
     pdf_path: Path,
-    model_name: str = "deepseek-ai/DeepSeek-OCR",
     tensor_parallel_size: int = 1,
 ) -> str:
-    """Parse PDF using vllm with VLM for OCR and convert to markdown.
+    """Parse PDF using DeepSeek-OCR (via vllm) and convert to markdown.
 
     Args:
         pdf_path: Path to the PDF file
-        model_name: vllm model name for OCR (default: deepseek-ai/DeepSeek-OCR)
         tensor_parallel_size: Tensor parallel size for vllm (default: 1)
 
     Returns:
@@ -143,13 +145,15 @@ def parse_pdf_to_markdown_vllm(
             "vllm is not installed. Install with: pip install vllm"
         )
 
-    logger.info(f"Parsing PDF with vllm: {pdf_path} (model={model_name})")
+    logger.info(
+        f"Parsing PDF with vllm: {pdf_path} (model={DEEPSEEK_OCR_MODEL})"
+    )
 
     # Convert PDF to images
     images = convert_pdf_to_images(pdf_path)
 
     # Initialize vllm LLM
-    logger.info(f"Initializing vllm LLM: {model_name}")
+    logger.info(f"Initializing vllm LLM: {DEEPSEEK_OCR_MODEL}")
 
     # Use DeepSeek-OCR specific implementation
     try:
@@ -158,7 +162,7 @@ def parse_pdf_to_markdown_vllm(
         )
 
         llm = LLM(
-            model=model_name,
+            model=DEEPSEEK_OCR_MODEL,
             tensor_parallel_size=tensor_parallel_size,
             enforce_eager=True,
             enable_prefix_caching=False,
@@ -171,7 +175,7 @@ def parse_pdf_to_markdown_vllm(
             "Falling back to default LLM initialization."
         )
         llm = LLM(
-            model=model_name,
+            model=DEEPSEEK_OCR_MODEL,
             tensor_parallel_size=tensor_parallel_size,
             enforce_eager=True,
         )
@@ -225,7 +229,6 @@ def parse_pdf_to_markdown(
     pdf_path: Path,
     bbox: Optional[str] = None,
     parser_type: str = "llamaparse",
-    vllm_model: Optional[str] = None,
     vllm_tensor_parallel_size: int = 1,
 ) -> str:
     """Parse PDF and merge all pages into a single markdown text.
@@ -234,20 +237,14 @@ def parse_pdf_to_markdown(
         pdf_path: Path to the PDF file
         bbox: Bounding box string in format "top,left,bottom,right" (default: None)
         parser_type: Parser type - "llamaparse" or "vllm" (default: "llamaparse")
-        vllm_model: vllm model name for OCR (required if parser_type is "vllm")
         vllm_tensor_parallel_size: Tensor parallel size for vllm (default: 1)
 
     Returns:
         Merged markdown text from all pages
     """
     if parser_type == "vllm":
-        if not vllm_model:
-            raise ValueError(
-                "--vllm-model is required when using parser_type='vllm'"
-            )
         return parse_pdf_to_markdown_vllm(
             pdf_path=pdf_path,
-            model_name=vllm_model,
             tensor_parallel_size=vllm_tensor_parallel_size,
         )
 
@@ -438,12 +435,6 @@ def main():
         help="Parser type: 'llamaparse' (default) or 'vllm' for local OCR with VLM",
     )
     parser.add_argument(
-        "--vllm-model",
-        type=str,
-        default=None,
-        help="vllm model name for OCR (required if --parser=vllm, e.g., 'Qwen/Qwen2-VL-7B-Instruct')",
-    )
-    parser.add_argument(
         "--vllm-tensor-parallel-size",
         type=int,
         default=1,
@@ -454,8 +445,6 @@ def main():
 
     # Validate parser-specific requirements
     if args.parser == "vllm":
-        if not args.vllm_model:
-            parser.error("--vllm-model is required when --parser=vllm")
         if not VLLM_AVAILABLE:
             parser.error(
                 "vllm is not installed. Install with: pip install vllm"
@@ -515,7 +504,6 @@ def main():
             pdf_path=input_file,
             bbox=args.bbox,
             parser_type=args.parser,
-            vllm_model=args.vllm_model,
             vllm_tensor_parallel_size=args.vllm_tensor_parallel_size,
         )
         # Save full markdown file
