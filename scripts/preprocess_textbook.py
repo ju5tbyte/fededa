@@ -76,7 +76,7 @@ MARKDOWN_HEADERS = [
 ]
 
 # OCR prompt for vllm
-OCR_PROMPT = """<|image|>\n<|grounding|>You are an expert OCR and document parsing assistant specializing in complex academic textbooks. Your task is to extract text and mathematical equations from the provided textbook page image and convert them into clean Markdown format.
+OCR_PROMPT = """<image>\n<|grounding|>You are an expert OCR and document parsing assistant specializing in complex academic textbooks. Your task is to extract text and mathematical equations from the provided textbook page image and convert them into clean Markdown format.
 
 
 Adhere STRICTLY to the following rules:
