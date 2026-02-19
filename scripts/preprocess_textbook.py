@@ -103,12 +103,12 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-def convert_pdf_to_images(pdf_path: Path, dpi: int = 150) -> List[Image.Image]:
+def convert_pdf_to_images(pdf_path: Path, dpi: int = 300) -> List[Image.Image]:
     """Convert PDF pages to PIL Images.
 
     Args:
         pdf_path: Path to the PDF file
-        dpi: Resolution for image conversion (default: 150)
+        dpi: Resolution for image conversion (default: 300)
 
     Returns:
         List of PIL Image objects
