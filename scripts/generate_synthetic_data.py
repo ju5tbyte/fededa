@@ -23,6 +23,9 @@ Usage:
     # Resume from checkpoint (enabled by default when unfiltered results exist)
     # Use --no-resume to disable resume mode
     python scripts/generate_synthetic_data.py <input_json_path> --no-resume
+
+    # Use local GGUF model for validation (requires llama-cpp-python)
+    python scripts/generate_synthetic_data.py <input_json_path> --validate-model local --model-path /path/to/model.gguf
 """
 
 import json
@@ -42,6 +45,15 @@ try:
     load_dotenv()
 except ImportError:
     pass
+
+
+# Try to import llama-cpp-python for local model support
+try:
+    from llama_cpp import Llama
+
+    LLAMA_CPP_AVAILABLE = True
+except ImportError:
+    LLAMA_CPP_AVAILABLE = False
 
 # Prompt templates
 QUESTION_GENERATION_PROMPT = """You are an expert professor in digital logic design, computer architecture, VLSI design, and electrical/computer engineering.
@@ -207,6 +219,235 @@ BACKOFF_MULTIPLIER = 2.0
 RETRY_STATUS_CODES = {429, 500, 502, 503, 504}
 
 
+class LocalLlamaModel:
+    """Wrapper class for local GGUF models using llama-cpp-python."""
+
+    def __init__(
+        self,
+        model_path: str,
+        n_ctx: int = 4096,
+        n_gpu_layers: int = 0,
+        chat_format: str = "llama-3",
+        temperature: float = 0.7,
+        max_tokens: int = 2048,
+    ):
+        """Initialize local llama.cpp model.
+
+        Args:
+            model_path: Path to GGUF model file
+            n_ctx: Context window size
+            n_gpu_layers: Number of layers to offload to GPU
+            chat_format: Chat format to use (llama-3, chatml, etc.)
+            temperature: Sampling temperature
+            max_tokens: Maximum tokens to generate
+        """
+        if not LLAMA_CPP_AVAILABLE:
+            raise ImportError(
+                "llama-cpp-python is not installed. "
+                "Install with: pip install llama-cpp-python"
+            )
+
+        self.model_path = model_path
+        self.n_ctx = n_ctx
+        self.n_gpu_layers = n_gpu_layers
+        self.chat_format = chat_format
+        self.default_temperature = temperature
+        self.default_max_tokens = max_tokens
+
+        print(f"Loading local model from: {model_path}")
+        self.llm = Llama(
+            model_path=model_path,
+            n_ctx=n_ctx,
+            n_gpu_layers=n_gpu_layers,
+            chat_format=chat_format,
+            verbose=False,
+        )
+        print(f"Local model loaded successfully")
+
+    def generate(
+        self,
+        prompt: str,
+        temperature: Optional[float] = None,
+        max_tokens: Optional[int] = None,
+    ) -> str:
+        """Generate response using local model.
+
+        Args:
+            prompt: User prompt
+            temperature: Sampling temperature (uses default if None)
+            max_tokens: Max tokens to generate (uses default if None)
+
+        Returns:
+            Generated response content
+        """
+        temperature = temperature or self.default_temperature
+        max_tokens = max_tokens or self.default_max_tokens
+
+        messages = [{"role": "user", "content": prompt}]
+
+        response = self.llm.create_chat_completion(
+            messages=messages,
+            temperature=temperature,
+            max_tokens=max_tokens,
+        )
+
+        return response["choices"][0]["message"]["content"]
+
+    def chat(
+        self,
+        messages: list,
+        temperature: Optional[float] = None,
+        max_tokens: Optional[int] = None,
+    ) -> str:
+        """Generate chat completion using local model.
+
+        Args:
+            messages: List of message dicts with 'role' and 'content'
+            temperature: Sampling temperature (uses default if None)
+            max_tokens: Max tokens to generate (uses default if None)
+
+        Returns:
+            Generated response content
+        """
+        temperature = temperature or self.default_temperature
+        max_tokens = max_tokens or self.default_max_tokens
+
+        response = self.llm.create_chat_completion(
+            messages=messages,
+            temperature=temperature,
+            max_tokens=max_tokens,
+        )
+
+        return response["choices"][0]["message"]["content"]
+
+
+class ModelInterface:
+    """Unified interface for both API and local models."""
+
+    def __init__(
+        self,
+        model_type: str = "api",
+        api_key: Optional[str] = None,
+        model: str = "deepseek-chat",
+        local_model_path: Optional[str] = None,
+        local_chat_format: str = "llama-3",
+        local_n_ctx: int = 4096,
+        local_n_gpu_layers: int = 0,
+        temperature: float = 0.7,
+        max_tokens: int = 2048,
+    ):
+        """Initialize model interface.
+
+        Args:
+            model_type: "api" for DeepSeek API, "local" for llama.cpp
+            api_key: API key for DeepSeek (required if model_type="api")
+            model: Model name for API (used for API type)
+            local_model_path: Path to GGUF model (required if model_type="local")
+            local_chat_format: Chat format for local model
+            local_n_ctx: Context size for local model
+            local_n_gpu_layers: GPU layers for local model
+            temperature: Default temperature
+            max_tokens: Default max tokens
+        """
+        self.model_type = model_type
+        self._model = model
+        self._api_key = api_key
+        self.temperature = temperature
+        self.max_tokens = max_tokens
+
+        if model_type == "local":
+            if local_model_path is None:
+                raise ValueError(
+                    "local_model_path is required when model_type is 'local'"
+                )
+            self.model_instance = LocalLlamaModel(
+                model_path=local_model_path,
+                n_ctx=local_n_ctx,
+                n_gpu_layers=local_n_gpu_layers,
+                chat_format=local_chat_format,
+                temperature=temperature,
+                max_tokens=max_tokens,
+            )
+        else:
+            self.model_instance = None
+            if api_key is None:
+                raise ValueError("api_key is required when model_type is 'api'")
+
+    @property
+    def api_key(self) -> str:
+        """Get API key."""
+        return self._api_key
+
+    @property
+    def model(self) -> str:
+        """Get model name."""
+        return self._model
+
+    def generate(
+        self,
+        prompt: str,
+        temperature: Optional[float] = None,
+        max_tokens: Optional[int] = None,
+    ) -> str:
+        """Generate response from model.
+
+        Args:
+            prompt: User prompt
+            temperature: Sampling temperature
+            max_tokens: Max tokens to generate
+
+        Returns:
+            Generated response content
+        """
+        if self.model_type == "local":
+            return self.model_instance.generate(prompt, temperature, max_tokens)
+        else:
+            return call_deepseek_api(
+                self.api_key,
+                prompt,
+                model=self.model,
+                temperature=temperature or self.temperature,
+                max_tokens=max_tokens or self.max_tokens,
+            )
+
+    def chat(
+        self,
+        messages: list,
+        temperature: Optional[float] = None,
+        max_tokens: Optional[int] = None,
+    ) -> str:
+        """Generate chat completion from model.
+
+        Args:
+            messages: List of message dicts
+            temperature: Sampling temperature
+            max_tokens: Max tokens to generate
+
+        Returns:
+            Generated response content
+        """
+        if self.model_type == "local":
+            return self.model_instance.chat(messages, temperature, max_tokens)
+        else:
+            # Convert to prompt for API
+            prompt = self._messages_to_prompt(messages)
+            return self.generate(prompt, temperature, max_tokens)
+
+    def _messages_to_prompt(self, messages: list) -> str:
+        """Convert messages list to a single prompt string for API."""
+        prompt_parts = []
+        for msg in messages:
+            role = msg.get("role", "user")
+            content = msg.get("content", "")
+            if role == "system":
+                prompt_parts.append(f"System: {content}")
+            elif role == "user":
+                prompt_parts.append(f"User: {content}")
+            elif role == "assistant":
+                prompt_parts.append(f"Assistant: {content}")
+        return "\n\n".join(prompt_parts)
+
+
 def call_deepseek_api(
     api_key: str,
     prompt: str,
@@ -336,11 +577,10 @@ def generate_questions_for_chunk(
 
 
 def validate_qa_pair(
-    api_key: str,
+    model_interface: ModelInterface,
     text_chunk: str,
     question: str,
     answer: str,
-    model: str,
 ) -> dict:
     """Validate a single QA pair using deterministic inference (temperature=0)."""
     prompt = VALIDATION_PROMPT.format(
@@ -351,10 +591,8 @@ def validate_qa_pair(
 
     try:
         # Use temperature=0 for deterministic validation
-        response = call_deepseek_api(
-            api_key,
+        response = model_interface.generate(
             prompt,
-            model=model,
             temperature=0.0,
         )
         result = extract_json_from_response(response)
@@ -375,8 +613,7 @@ def validate_qa_pair(
 
 def process_file(
     input_path: str,
-    api_key: str,
-    model: str = "deepseek-chat",
+    model_interface: ModelInterface,
     delay: float = 1.0,
     start_chunk: int = 0,
     end_chunk: Optional[int] = None,
@@ -388,8 +625,7 @@ def process_file(
 
     Args:
         input_path: Path to input JSON file (or unfiltered JSON for validate phase)
-        api_key: OpenRouter API key
-        model: Model to use
+        model_interface: Model interface for inference
         delay: Delay between API calls
         start_chunk: Starting chunk index
         end_chunk: Ending chunk index (exclusive)
@@ -411,7 +647,7 @@ def process_file(
 
     # Handle validate-only phase
     if phase == "validate":
-        return validate_only(input_path, api_key, model, delay, resume)
+        return validate_only(input_path, model_interface, delay, resume)
 
     # Load input file
     with open(input_path, "r", encoding="utf-8") as f:
@@ -450,9 +686,13 @@ def process_file(
             f"Processing chunk {chunk_id} ({i + 1 - start_chunk}/{total_chunks})..."
         )
 
-        # Generate questions
+        # Generate questions using API model (generation always uses DeepSeek API)
+        # Note: Generation uses the model's API settings from model_interface
         questions = generate_questions_for_chunk(
-            api_key, text_chunk, model, max_questions=max_questions
+            model_interface.api_key,
+            text_chunk,
+            model_interface.model,
+            max_questions=max_questions,
         )
 
         if not questions:
@@ -482,7 +722,7 @@ def process_file(
     # Run validation if requested
     if phase in ("all", "validate"):
         validation_results, filtered_results = run_validation(
-            unfiltered_results, api_key, model, delay, resume, source_path
+            unfiltered_results, model_interface, delay, resume, source_path
         )
     else:
         validation_results = []
@@ -516,8 +756,7 @@ def process_file(
 
 def validate_only(
     unfiltered_path: str,
-    api_key: str,
-    model: str,
+    model_interface: ModelInterface,
     delay: float,
     resume: bool,
 ) -> dict:
@@ -545,8 +784,7 @@ def validate_only(
 
     validation_results, filtered_results = run_validation(
         unfiltered_results,
-        api_key,
-        model,
+        model_interface,
         delay,
         resume,
         str(original_input_path),
@@ -575,8 +813,7 @@ def validate_only(
 
 def run_validation(
     unfiltered_results: list,
-    api_key: str,
-    model: str,
+    model_interface: ModelInterface,
     delay: float,
     resume: bool,
     source_path: Optional[str] = None,
@@ -585,8 +822,7 @@ def run_validation(
 
     Args:
         unfiltered_results: List of chunk results with generated questions
-        api_key: OpenRouter API key
-        model: Model to use
+        model_interface: Model interface for inference
         delay: Delay between API calls
         resume: Whether to resume from checkpoint
         source_path: Path to the original unfiltered results JSON file.
@@ -645,11 +881,10 @@ def run_validation(
             print(f"Validating chunk {chunk_id}: {question_text[:50]}...")
 
             validation = validate_qa_pair(
-                api_key,
+                model_interface,
                 text_chunk,
                 question_text,
                 q["answer"],
-                model,
             )
 
             validation_result = {
@@ -711,7 +946,50 @@ def main():
     parser.add_argument(
         "--model",
         default="deepseek-chat",
-        help="DeepSeek model to use (default: deepseek-chat)",
+        help="DeepSeek model to use for generation (default: deepseek-chat)",
+    )
+    parser.add_argument(
+        "--validate-model",
+        type=str,
+        default="api",
+        choices=["api", "local"],
+        help="Model type for validation: 'api' uses DeepSeek API, 'local' uses GGUF model (default: api)",
+    )
+    parser.add_argument(
+        "--model-path",
+        type=str,
+        default=None,
+        help="Path to GGUF model file (required if --validate-model local)",
+    )
+    parser.add_argument(
+        "--chat-format",
+        type=str,
+        default="llama-3",
+        help="Chat format for local model (default: llama-3). Options: llama-3, llama-2, chatml, gemma, etc.",
+    )
+    parser.add_argument(
+        "--n-ctx",
+        type=int,
+        default=4096,
+        help="Context size for local model (default: 4096)",
+    )
+    parser.add_argument(
+        "--n-gpu-layers",
+        type=int,
+        default=-1,
+        help="Number of layers to offload to GPU for local model (default: -1, all layers)",
+    )
+    parser.add_argument(
+        "--temperature",
+        type=float,
+        default=0.7,
+        help="Temperature for generation (default: 0.7)",
+    )
+    parser.add_argument(
+        "--max-tokens",
+        type=int,
+        default=2048,
+        help="Max tokens for generation (default: 2048)",
     )
     parser.add_argument(
         "--delay",
@@ -767,10 +1045,50 @@ def main():
     # Get API key
     api_key = args.api_key or get_deepseek_api_key()
 
+    # Create model interface
+    if args.validate_model == "local":
+        if not args.model_path:
+            raise ValueError(
+                "--model-path is required when --validate-model local. "
+                "Please specify the path to your GGUF model file."
+            )
+        if not LLAMA_CPP_AVAILABLE:
+            raise ImportError(
+                "llama-cpp-python is not installed. "
+                "Install with: pip install llama-cpp-python"
+            )
+
+        print(f"Using local GGUF model for validation: {args.model_path}")
+        model_interface = ModelInterface(
+            model_type="local",
+            api_key=api_key,
+            model=args.model,
+            local_model_path=args.model_path,
+            local_chat_format=args.chat_format,
+            local_n_ctx=args.n_ctx,
+            local_n_gpu_layers=args.n_gpu_layers,
+            temperature=args.temperature,
+            max_tokens=args.max_tokens,
+        )
+    else:
+        # Use API for validation
+        model_interface = ModelInterface(
+            model_type="api",
+            api_key=api_key,
+            model=args.model,
+            temperature=args.temperature,
+            max_tokens=args.max_tokens,
+        )
+
     # Process file
     print(f"Processing: {args.input_file}")
     print(f"Phase: {args.phase}")
-    print(f"Model: {args.model}")
+    print(f"Generation model: {args.model}")
+    print(f"Validation model: {args.validate_model}")
+    if args.validate_model == "local":
+        print(f"Local model path: {args.model_path}")
+        print(f"Chat format: {args.chat_format}")
+        print(f"Context size: {args.n_ctx}")
     print(f"Chunk range: {args.start_chunk} to {args.end_chunk or 'end'}")
     print(f"Max questions per chunk: {args.max_questions}")
     print(f"Resume: {args.resume}")
@@ -778,8 +1096,7 @@ def main():
 
     result = process_file(
         args.input_file,
-        api_key,
-        model=args.model,
+        model_interface,
         delay=args.delay,
         start_chunk=args.start_chunk,
         end_chunk=args.end_chunk,
