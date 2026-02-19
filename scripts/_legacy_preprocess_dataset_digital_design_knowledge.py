@@ -6,7 +6,7 @@ This script processes PDF documents containing digital design knowledge
 and generates QA datasets through a 3-step pipeline:
 
 1. Parse PDFs using LlamaParse with semantic chunking
-2. Generate QA pairs (0 to 5 per chunk) using vLLM with Llama 3.3 70B AWQ
+2. Generate QA pairs (0 to 10 per chunk) using vLLM with Llama 3.3 70B AWQ
    - Only substantive technical knowledge generates questions
    - Text-only context: no figure-dependent questions
 3. Filter QA pairs for consistency using vLLM validation
@@ -71,7 +71,7 @@ logger = logging.getLogger(__name__)
 # Constants
 DEFAULT_MODEL = "casperhansen/llama-3.3-70b-instruct-awq"
 DEFAULT_TEMPERATURE = 0.7
-DEFAULT_MAX_TOKENS = 16384
+DEFAULT_MAX_TOKENS = 8192
 
 QUESTION_GENERATION_PROMPT = """You are an expert professor in digital logic design, computer architecture, VLSI design, and general electrical and computer engineering.
 
@@ -82,15 +82,39 @@ Your task: Read the text chunk below and generate high-quality questions that te
 
 **CRITICAL RULES:**
 
-1. **Standalone Principle:** Every question must make complete sense ONLY WITH the domain knowledge of domains above, WITHOUT the specific and detailed context of provided text chunk.
+1. **Content-Grounded Principle:** Every question MUST be derived from **substantive technical content actually present in the text chunk**. 
+   - The text chunk must contain enough technical explanation, definitions, examples, derivations, or analysis to form the basis of a question.
+   - Do NOT generate questions from: tables of contents, chapter titles, section headings, bullet-point topic lists, index entries, references, copyright notices, or any text that merely *mentions* a topic without *explaining* it.
+   - **Key test:** If the chunk only *names* a topic (e.g., "Chapter 5: Pipelining") but does not *explain* it, you MUST return an empty array. A topic name alone is NOT sufficient basis for a question.
+   - If the chunk contains a mix of substantive and non-substantive content, generate questions ONLY from the substantive portions.
+
+   **Exercise / Problem-Set Chunks — SPECIAL HANDLING:**
+   - A chunk that is primarily a list of exercises or homework problems (e.g., "1. Implement the circuit...", "2. Show that...") is a set of **task directives**, NOT technical explanations.
+   - Task directives like "Implement X", "Show that Y", "Design Z" merely *name* what the student should do — they do NOT *explain* the underlying concepts.
+   - Therefore: if the chunk is primarily an exercise list, return an **empty array**, even if the exercises reference well-known topics like decoders, multiplexers, or Boolean algebra.
+   - **Exception:** If an exercise chunk also contains substantial explanatory prose (definitions, derivations, worked examples — not just task instructions), you may generate questions from that explanatory content only.
+
+2. **Standalone Principle:** While questions must be grounded in the text chunk's content, the final question and answer must make complete sense with domain knowledge alone, WITHOUT referencing the specific text.
+
+   **FORBIDDEN references in BOTH question and answer — any of these → automatically invalid:**
+   - "the text", "the author", "the passage", "the chapter", "the book"
+   - "the example above", "as described in", "as shown in", "as illustrated in"
+   - "Figure [any number]", "Table [any number]", "Diagram [any number]" (e.g., "Figure 9-17", "Table 3-2")
+   - "Section [any number]", "Chapter [any number]" (e.g., "section 10.3", "chapter 5")
+   - "the circuit in Figure", "the implementation in Figure", "the truth table in Figure"
+   - Any other phrasing that requires access to a specific figure, table, diagram, or textbook section to understand the question or verify the answer
+
    - BAD: "What does the author describe as the advantage of CMOS?"  
    - BAD: "According to the text, how many inputs does the circuit have?"
+   - BAD: "Compare the circuit in Figure 9-17 with Figure 9-18."
+   - BAD: "List the three types of hazards mentioned in the passage."
    - GOOD: "Why do CMOS circuits consume less static power than NMOS-only circuits?"
    - GOOD: "Given F = A'B + AB', derive an equivalent expression using NAND gates only."
    - GOOD: "Explain how a 5-stage RISC pipeline handles a data hazard caused by a RAW dependency between two consecutive instructions."
-   - GOOD: "Why is latch-up a concern in bulk CMOS processes, and how does guard ring placement mitigate it?"
 
-2. **Question Difficulty Tiers — target distribution: easy 30%, medium 40%, hard 30%:**
+   In other words: the **topic and depth** come from the text chunk, but the **phrasing** must be self-contained.
+
+3. **Question Difficulty Tiers**
    - **easy**: Define a concept or recall a key property.  
      Example: "What is the difference between a latch and a flip-flop?"
      Example: "What is the purpose of the program counter in a CPU?"
@@ -104,39 +128,49 @@ Your task: Read the text chunk below and generate high-quality questions that te
      Example: "A processor has a 5-stage pipeline. Given the instruction sequence ADD R1,R2,R3 followed by SUB R4,R1,R5, describe the data hazard that arises, and compare the cycle cost of resolving it via stalling versus forwarding."
      Example: "Given a CMOS inverter with (W/L)_p = 2(W/L)_n, explain how to size the transistors so that the switching threshold is at VDD/2, and describe how this sizing affects rise and fall times."
 
-3. **Full QA Pair Example (for reference on expected quality):**
+4. **Full QA Pair Example (for reference on expected quality):**
    - **difficulty:** "medium"
    - **topic:** "Cache Memory"
    - **question:** "A direct-mapped cache has 16 cache lines and uses a block size of 4 words. If the CPU issues a byte address of 0x0000_02B4, explain how the address is partitioned into tag, index, and offset fields, and identify which cache line this address maps to."
    - **answer:** "With 4 words per block (16 bytes), the byte offset field is log2(16) = 4 bits. With 16 cache lines, the index field is log2(16) = 4 bits. The remaining upper bits form the tag. For address 0x0000_02B4 = 0000...0010_1011_0100 in binary, the lowest 4 bits (0100) are the byte offset, the next 4 bits (1011 = 11 decimal) are the index, so this address maps to cache line 11. The tag is the remaining upper bits (0x0000_02)."
 
-4. **No Duplicate Concepts:** Each question must test a **distinct concept or reasoning skill**. Do not generate multiple questions that cover the same idea from slightly different angles. If the chunk only contains one substantive concept, generate fewer questions rather than producing semantic duplicates.
+5. **No Duplicate Concepts:** Each question must test a **distinct concept or reasoning skill**. Do not generate multiple questions that cover the same idea from slightly different angles. If the chunk only contains one substantive concept, generate fewer questions rather than producing semantic duplicates.
 
-5. **Forbidden Question Types:**
+6. **Forbidden Question Types:**
    - Questions about the textbook itself (chapter titles, section numbers, what the author says)
-   - Questions about figures, tables, or diagrams
+   - Questions that reference or depend on figures, tables, or diagrams (e.g., "Compare the circuit in Figure X with Figure Y")
    - Pure definition lookups that any glossary could answer (unless the concept is nuanced)
    - Yes/No questions without requiring justification
+   - Questions on topics that the text chunk merely *names* but does not *explain*
 
-6. **Encouraged Question Types:**
+7. **Encouraged Question Types:**
    - "Why" and "How" questions that require reasoning
    - "Compare and contrast" between related concepts
    - "Given [scenario/expression/circuit description/instruction sequence], determine/simplify/analyze..."
    - Troubleshooting: "If [something goes wrong], what is the likely cause?"
    - Design questions: "How would you implement X using Y?"
 
-7. **Answer Quality:**
+8. **Answer Quality:**
    - Answers should be **technically correct and self-contained** — a knowledgeable person should verify them without needing the textbook.
-   - For computation/derivation questions, show key steps.
+   - Answers must be grounded in the technical content of the text chunk. Do not fabricate details not supported by the chunk or general domain knowledge.
+   - **No references to figures, tables, sections, or chapters** in answers (e.g., do NOT write "as shown in Figure 9-18").
+   - **Information Gain Requirement:** The answer must provide concrete, specific information beyond what is already stated in the question itself. An answer that merely restates or rephrases the question is invalid.
+     - BAD: Q: "What does the 74 prefix indicate?" → A: "It indicates a 7400 series chip." (tautological — zero information gain)
+   - **Technical Accuracy for Derivations:** For answers involving derivation such as Boolean algebra, circuit equations, K-map minimizations, etc.: Show key intermediate steps, not just the final result.
    - Keep answers concise but complete (2-6 sentences typically).
 
-8. **Skip Noise:** Return empty array if the chunk is TOC, index, references, copyright, or has no substantive technical content.
+9. **Skip Noise — STRICTLY enforce this rule:** Return an empty array if ANY of the following apply:
+   - The chunk is a table of contents, index, list of references, copyright page, or preface without technical content.
+   - The chunk consists primarily of topic names, section headings, or enumerated lists of subjects without substantive explanation.
+   - **The chunk is primarily a list of exercises or homework problems** (numbered task directives like "Implement...", "Show that...", "Design...") without accompanying explanatory prose.
+   - The chunk lacks sufficient technical depth to generate a question.
+   - **When in doubt, return an empty array.** Generating zero questions from a non-substantive chunk is always preferable to generating ungrounded questions.
 
 **Output Format (JSON):**
 {{
   "questions": []  // Return empty if content is not suitable based on constraints
 }}
-OR (if valid content exists, depending on the chunk, you might generate 1~5 questions):
+OR (if valid substantive content exists, depending on the chunk, you might generate 1~10 questions):
 {{
   "questions": [
     {{
@@ -148,10 +182,17 @@ OR (if valid content exists, depending on the chunk, you might generate 1~5 ques
   ]
 }}
 
-Generate 0-5 questions now:"""
+**Before generating, perform this self-check:**
+1. Does this text chunk actually *explain* something technical, or does it merely *list/name* topics? If the latter → empty array.
+2. Is this chunk primarily an exercise/problem list with numbered tasks but no explanatory prose? If yes → empty array.
+3. For each question I am about to generate: does the chunk contain the actual explanation needed to form this question, or am I drawing on outside knowledge? If outside knowledge → do not generate that question.
+4. Does any question or answer reference a Figure, Table, Section, or Chapter? If yes → remove that reference or discard the question.
+5. Does any answer merely restate the question without adding specific technical information? If yes → discard.
+
+Generate 0-10 questions now:"""
 
 
-VALIDATION_PROMPT = """You are a strict auditor for a digital logic design, computer architecture, VLSI design, and electrical/computer engineering fine-tuning dataset.
+VALIDATION_PROMPT = """You are a strict auditor for a digital logic design, computer architecture, VLSI design, and electrical/computer engineering problem set.
 
 Evaluate whether the following QA pair is suitable for teaching students to learn the domain knowledge.
 
@@ -163,19 +204,51 @@ Evaluate whether the following QA pair is suitable for teaching students to lear
 
 **Evaluation Criteria:**
 
-1. **Standalone Test:** Can this question be understood and answered WITH the domain knowledge of digital logic design, computer architecture, VLSI design, or general electrical/computer engineering, WITHOUT reading the original text? If the question references "the text", "the author", "the example above", "Figure X", or any textbook-specific context → **FAIL**.
+1. **Content-Grounding Test:** Does the original text contain **substantive technical explanation** of the questioned concept — such as definitions, derivations, comparisons, step-by-step procedures, worked examples, or analysis?
 
-2. **Technical Correctness:** Is the answer factually and technically accurate for its respective domain (digital logic, computer architecture, VLSI, or EE/CE)? If the answer contains errors, misleading simplifications, or hallucinated facts → **FAIL**.
+   Merely mentioning a topic name in a heading, exercise instruction, or task directive does **NOT** constitute explanation. Apply these rules strictly:
+   - Exercise prompts like "Implement X", "Show that Y", "Design Z using..." are **task directives**, not explanations. A chunk that is primarily a numbered list of such directives does NOT explain the underlying concepts.
+   - If the chunk is primarily an exercise/problem list and the question asks about a concept that is only *referenced* (not *explained*) in those exercises → **FAIL**.
+   - If the chunk only contains a section heading + brief transitional sentence (e.g., "This chapter covers X. The following exercises...") without substantive explanation → **FAIL**.
+   - A topic being *well-known in the domain* does not exempt it from this test. The question must be grounded in **this specific chunk's explanatory content**.
 
-3. **Non-Triviality:** Does the question require meaningful knowledge or reasoning? Pure metadata questions ("What chapter covers X?") or questions answerable by common sense alone → **FAIL**.
+   **To determine PASS:** Identify the specific sentences or paragraphs in the original text that explain the concept tested by the question. If you cannot point to at least 2-3 sentences of genuine technical explanation (not task directives), → **FAIL**.
 
-4. **Relevance:** Is the question about digital logic design, computer architecture, VLSI design, or closely related EE/CS topics? Off-topic → **FAIL**.
+2. **Standalone Test:** Can this question be understood and answered WITH the domain knowledge of digital logic design, computer architecture, VLSI design, or general electrical/computer engineering, WITHOUT reading the original text?
 
-5. **Answer Completeness:** Does the answer adequately address the question? A vague or incomplete answer → **FAIL**.
+   Check **both the question AND the answer** for forbidden references. If ANY of the following patterns appear in EITHER the question or the answer → **FAIL**:
+   - "the text", "the author", "the passage", "the chapter", "the book"
+   - "Figure" followed by any number/identifier (e.g., "Figure 9-17", "Figure 3-2")
+   - "Table" followed by any number/identifier (e.g., "Table 2-1")
+   - "Diagram" followed by any number/identifier
+   - "Section" or "section" followed by any number (e.g., "section 10.3")
+   - "Chapter" or "chapter" followed by any number
+   - "as shown in", "as described in", "as illustrated in", "as presented in"
+   - "the circuit in Figure", "the implementation in Figure"
+   - "the example above", "the previous example", "the following figure"
+   
+   If the question or answer cannot be fully understood without access to a specific figure, table, or textbook section → **FAIL**.
+
+3. **Technical Correctness:** Is the answer factually and technically accurate for its respective domain (digital logic, computer architecture, VLSI, or EE/CE)?
+
+   **Apply heightened scrutiny to derivations and equations:** For example, verify the correct gate-level construction for NAND/NOR gate implementations. If there is a phrase "A AND B = (A' NAND B')'" it is incorrect since the correct NAND implementation of AND is ((A NAND B) NAND (A NAND B)). 
+   
+   A incorrect equation, wrong minimization result, or erroneous derivation step → **FAIL**.
+   If the answer contains errors, misleading simplifications, or hallucinated facts → **FAIL**.
+
+4. **Non-Triviality:** Does the question require meaningful knowledge or reasoning? Pure metadata questions ("What chapter covers X?") or questions answerable by common sense alone → **FAIL**.
+
+5. **Relevance:** Is the question about digital logic design, computer architecture, VLSI design, or closely related EE/CS topics? Off-topic → **FAIL**.
+
+6. **Answer Completeness & Information Gain:** Does the answer adequately address the question AND provide genuine information beyond what the question itself already states?
+   - A vague or incomplete answer → **FAIL**.
+   - A **tautological answer** that merely restates the question in different words without adding specific, concrete information → **FAIL**.
+     - Example of tautological FAIL: Q: "What does the 74 prefix indicate?" A: "The 74 prefix indicates that the chip is a 7400 series chip." (This restates the question — it does not explain what the 7400 series is, what technology it uses, or why the prefix matters.)
+   - The answer must contain at least one piece of specific technical information not already present in the question.
 
 **Output Format (JSON):**
 {{
-  "reason": "Explain which criteria passed/failed and why.",
+  "reason": "Explain which criteria passed/failed and why. For Content-Grounding, cite the specific explanatory content found (or not found) in the original text. For Technical Correctness of derivations, show your verification. For Standalone, list any forbidden references found.",
   "result": "PASS" or "FAIL"
 }}
 
@@ -200,13 +273,13 @@ VALIDATION_SCHEMA = {
 
 
 # JSON schema for guided generation - Question Generation
-# Updated: questions array can be empty (0 questions) or have up to 5 questions
+# Updated: questions array can be empty (0 questions) or have up to 10 questions
 QUESTION_GENERATION_SCHEMA = {
     "type": "object",
     "properties": {
         "questions": {
             "type": "array",
-            "maxItems": 5,
+            "maxItems": 10,
             "items": {
                 "type": "object",
                 "properties": {
@@ -843,7 +916,10 @@ def main():
     if args.step in ["all", "generate", "filter"]:
         logger.info(f"Initializing vLLM with model: {args.model}")
         llm = LLM(
-            model=args.model, tensor_parallel_size=args.tensor_parallel_size
+            model=args.model,
+            tensor_parallel_size=args.tensor_parallel_size,
+            max_model_len=args.max_tokens
+            + 2048,  # Add buffer for prompt length
         )
 
         if args.step in ["all", "generate"]:
