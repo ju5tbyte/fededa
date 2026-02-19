@@ -42,6 +42,7 @@ dependencies = [
     "llama-parse",
     "llama-index-core",
     "langchain-text-splitters",
+    "llama-cpp-python",
 ]
 
 [tool.setuptools.packages.find]
