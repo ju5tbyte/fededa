@@ -18,6 +18,7 @@ classifiers = [
 dependencies = [
     "numpy",
     "torch",
+    "torchvision",
     "openai",
     "hydra-core",
     "omegaconf",
@@ -44,6 +45,11 @@ dependencies = [
     "langchain-text-splitters",
     "llama-cpp-python",
     "pdf2image",
+    "torchvision",
+    "deepspeed",
+    "triton",
+    "torchcodec",
+    "peft",
 ]
 
 [tool.setuptools.packages.find]
