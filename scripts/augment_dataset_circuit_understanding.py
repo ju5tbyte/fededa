@@ -113,7 +113,8 @@ Analyze the provided image and Question to derive the Correct Answer.
 Write out the logical reasoning process naturally as human expert would do.
 
 Constraint:
-- Ensure your explanation concludes with the Correct Answer provided below.
+- Ensure your explanation concludes with the exact actual content of Correct Answer provided below.
+- Do NOT use the choice label of answer in conclusion. Instead, ensure your explanation naturally concludes with the actual content of the correct answer.
 - Output plain text only (no Markdown).
 
 Question: {question}
