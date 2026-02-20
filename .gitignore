@@ -11,3 +11,4 @@ fededa.zip
 **/__pycache__/
 __pycache__/
 **/*.pyc
+scripts/qwen-vl-finetune/

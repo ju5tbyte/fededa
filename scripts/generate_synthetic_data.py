@@ -6,9 +6,10 @@ This script:
 3. Saves unfiltered results
 4. Validates generated QA pairs using a validation prompt
 5. Saves filtered results (PASS only) and validation results
+6. Converts filtered results to finetune dataset format
 
 Usage:
-    # Run both generation and validation (default)
+    # Run all phases: generation, validation, and finetune conversion (default)
     python scripts/generate_synthetic_data.py <input_json_path>
     python scripts/generate_synthetic_data.py data/processed/digital_design_knowledge_source/an_animated_introduction_to_digital_logic_design.json
     python scripts/generate_synthetic_data.py <input_json_path> --max-questions 5
@@ -19,6 +20,9 @@ Usage:
 
     # Run only validation phase (use unfiltered JSON as input)
     python scripts/generate_synthetic_data.py <unfiltered_json_path> --phase validate
+
+    # Run only finetune conversion phase (use filtered JSON as input)
+    python scripts/generate_synthetic_data.py <filtered_json_path> --phase finetune
 
     # Resume from checkpoint (enabled by default when unfiltered results exist)
     # Use --no-resume to disable resume mode
@@ -791,6 +795,29 @@ def process_file(
         validation_results = []
         filtered_results = []
 
+    # Run finetune conversion if requested
+    finetune_result = None
+    if phase in ("all", "finetune"):
+        # Determine the filtered file path for finetune conversion
+        if phase == "finetune":
+            # In finetune phase, input_path is already the filtered file
+            filtered_file_path = input_path
+        else:
+            # In all phase, use the filtered file from validation
+            input_file = Path(input_path)
+            base_name = input_file.stem
+            output_dir = input_file.parent
+            filtered_file_path = str(
+                output_dir / f"{base_name}_qa_filtered.json"
+            )
+
+        if Path(filtered_file_path).exists():
+            finetune_result = convert_to_finetune_format(filtered_file_path)
+        else:
+            print(
+                f"Warning: Filtered file not found at {filtered_file_path}, skipping finetune conversion"
+            )
+
     # Summary
     print("\n" + "=" * 50)
     print("SUMMARY")
@@ -806,6 +833,10 @@ def process_file(
         print(f"Pass rate: {pass_rate:.1f}%")
     else:
         print("Pass rate: N/A (no validations)")
+    if finetune_result:
+        print(
+            f"Questions converted to finetune format: {finetune_result['total_converted']}"
+        )
 
     return {
         "total_chunks": processed,
@@ -814,6 +845,9 @@ def process_file(
         ),
         "total_validated": len(validation_results),
         "total_passed": len(filtered_results),
+        "total_converted": (
+            finetune_result["total_converted"] if finetune_result else 0
+        ),
     }
 
 
@@ -998,6 +1032,57 @@ def run_validation(
     return validation_results, filtered_results
 
 
+def convert_to_finetune_format(filtered_json_path: str) -> dict:
+    """Convert filtered QA pairs to finetune dataset format.
+
+    Args:
+        filtered_json_path: Path to filtered JSON file (e.g., *_qa_filtered.json)
+
+    Returns:
+        Dict with conversion statistics
+    """
+    filtered_file = Path(filtered_json_path)
+    output_dir = filtered_file.parent
+
+    # Derive finetune output path
+    base_name = filtered_file.stem
+    if base_name.endswith("_qa_filtered"):
+        finetune_base = base_name.replace("_qa_filtered", "_finetune")
+    else:
+        finetune_base = base_name + "_finetune"
+
+    finetune_path = output_dir / f"{finetune_base}.json"
+
+    # Load filtered results
+    with open(filtered_json_path, "r", encoding="utf-8") as f:
+        data = json.load(f)
+
+    filtered_questions = data.get("questions", [])
+
+    # Convert to finetune format
+    finetune_data = []
+    for q in filtered_questions:
+        conversation = {
+            "conversations": [
+                {"from": "human", "value": q["question"]},
+                {"from": "gpt", "value": q["answer"]},
+            ]
+        }
+        finetune_data.append(conversation)
+
+    # Save finetune format
+    with open(finetune_path, "w", encoding="utf-8") as f:
+        json.dump(finetune_data, f, indent=2, ensure_ascii=False)
+
+    print(f"Converted {len(finetune_data)} QA pairs to finetune format")
+    print(f"Saved to: {finetune_path}")
+
+    return {
+        "total_converted": len(finetune_data),
+        "finetune_path": str(finetune_path),
+    }
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Generate synthetic QA pairs from text chunks"
@@ -1086,10 +1171,11 @@ def main():
     parser.add_argument(
         "--phase",
         type=str,
-        choices=["all", "generate", "validate"],
+        choices=["all", "generate", "validate", "finetune"],
         default="all",
-        help="Phase to run: 'all' (generate + validate), 'generate' (questions only), "
-        "'validate' (validation only, use unfiltered JSON as input). Default: all",
+        help="Phase to run: 'all' (generate + validate + finetune), 'generate' (questions only), "
+        "'validate' (validation only, use unfiltered JSON as input), "
+        "'finetune' (convert filtered JSON to finetune format). Default: all",
     )
     parser.add_argument(
         "--resume",
