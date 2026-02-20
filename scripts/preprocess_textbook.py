@@ -76,7 +76,7 @@ MARKDOWN_HEADERS = [
 ]
 
 # OCR prompt for vllm
-OCR_PROMPT = "<image>\n<|grounding|><image>\n<|grounding|>Convert the document to markdown."
+OCR_PROMPT = "<image>\n<|grounding|>Convert the document to markdown."
 
 # Configure logging
 logging.basicConfig(
