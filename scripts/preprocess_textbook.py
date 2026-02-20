@@ -76,25 +76,7 @@ MARKDOWN_HEADERS = [
 ]
 
 # OCR prompt for vllm
-OCR_PROMPT = """<image>\n<|grounding|>You are an expert OCR and document parsing assistant specializing in complex academic textbooks. Your task is to extract text and mathematical equations from the provided textbook page image and convert them into clean Markdown format.
-
-
-Adhere STRICTLY to the following rules:
-
-1. **Text and Math Only**: Extract only the textual content, section headings, and mathematical equations.
-
-2. **Heading Consistency**: Accurately infer Markdown heading levels (`#`, `##`, `###`, etc.) based on typography (font size, weight) and hierarchical numbering conventions (e.g., "1. Chapter" -> `#`, "1.1 Section" -> `##`, "1.1.1 Subsection" -> `###`). Apply this logic strictly to ensure structural consistency across isolated pages.
-
-3. **Eliminate Running Headers/Footers**: Strictly distinguish between actual section headings and running headers/footers (e.g., the book title, chapter title, or author name repeating at the very top or bottom margins). Completely OMIT running headers, footers, and page numbers.
-
-4. **Cross-Page Continuity**: Maintain the logical reading flow. If the first sentence or paragraph clearly continues from the previous page, output it as normal inline text without adding artificial line breaks, indentations, or new paragraph markers at the beginning.
-
-5. **Ignore Visuals**: Completely ignore all images, diagrams, charts, circuit schematics, and UI captures. Do NOT generate any descriptive text or placeholders.
-
-6. **LaTeX Formatting**: Convert all mathematical symbols, expressions, and Boolean logic formulas into LaTeX. Use `$` for inline equations and `$$` for standalone block equations.
-
-7. **No Filler**: Output strictly the converted Markdown content. Do not include introductory or concluding conversational remarks."""
-
+OCR_PROMPT = "<image>\n<|grounding|><image>\n<|grounding|>Convert the document to markdown."
 
 # Configure logging
 logging.basicConfig(
