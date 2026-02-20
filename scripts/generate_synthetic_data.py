@@ -56,79 +56,109 @@ except ImportError:
     LLAMA_CPP_AVAILABLE = False
 
 # Prompt templates
-QUESTION_GENERATION_PROMPT = """You are an expert professor in digital logic design, computer architecture, VLSI design, and electrical/computer engineering.
+QUESTION_GENERATION_PROMPT = """You are an expert professor in digital logic design,
+computer architecture, VLSI design, and electrical/computer engineering.
 
-**Task:** Read the text chunk below and generate high-quality questions testing genuine understanding of these domains.
+**Task:** Read the text chunk below and generate high-quality questions that test
+genuine understanding of these domains.
+
+---
+
+## SECTION 1 — Content Eligibility
+
+Generate questions ONLY when the chunk contains substantive technical explanation:
+definitions with reasoning, derivations, comparative analysis, worked examples,
+or design trade-off discussions.
+
+**Return empty array if the chunk is primarily:**
+- Table of contents, index, references, copyright, or preface
+- Headings and topic names without accompanying explanation
+- Exercise/problem lists with no explanatory prose
+- Fewer than ~5 sentences of genuine technical content
+
+**Borderline chunks:** If the chunk explains at least one concept with enough depth
+to form a non-trivial question, generate for that concept only.
+
+---
+
+## SECTION 2 — Question Types
+
+Vary question types across the following categories. Do NOT cluster around one type.
+
+| Type | Description | Example stem |
+|------|-------------|--------------|
+| **Concept** | Define or distinguish a concept | "What is the difference between…" |
+| **Causal** | Explain the reason behind a behavior | "Why does… result in…" |
+| **Quantitative** | Compute or derive a numerical value | "Calculate / Derive…" |
+| **Transform** | Convert between representations (Boolean↔Gate↔HDL↔truth table) | "Convert the following SOP expression to a NAND-only circuit…" |
+| **Trace** | Step through state/behavior over time (FSM, pipeline, waveform) | "After 3 clock edges, what is the value of Q…" |
+| **Design** | Construct a circuit or system meeting given requirements | "Design a minimal… / Choose the best…" |
+| **Optimize** | Minimize or maximize under explicit constraints | "Using a K-map, find the minimal SOP and minimal POS, and select whichever has fewer literals…" |
+| **Trade-off** | Compare alternatives with justification | "Under what conditions would X outperform Y…" |
+| **Fault** | Identify an error or predict its consequence | "A designer connects… What fault arises…" |
+
+Each generated batch should include **at least two different types** when ≥3 questions
+are generated.
+
+---
+
+## SECTION 3 — Difficulty Tiers
+
+- **easy:** Recall or define a single concept with one key property.
+- **medium:** Apply a concept, compare two alternatives, or explain causality.
+- **hard:** Multi-step reasoning, optimization, cross-concept synthesis, or
+  quantitative derivation with intermediate steps.
+
+Aim for a roughly balanced spread across tiers when content supports it.
+
+---
+
+## SECTION 4 — Mandatory Quality Rules
+
+**Standalone principle — FORBIDDEN in both Q and A:**
+- "the text / author / passage / chapter / book / this example"
+- "Figure / Table / Diagram / Section / Chapter [number or name]"
+- "as shown / described / illustrated in"
+
+**Answer requirements:**
+- Technically correct and self-contained.
+- Must add ≥1 specific technical fact not already stated in the question.
+- For derivations: show key intermediate steps; do not skip to the final result.
+- Length: 2–5 sentences for concept/causal; include equations/steps for
+  quantitative and design questions (no artificial sentence cap).
+
+**No semantic duplicates:** Distinct questions are preferred over overlapping ones.
+
+---
+
+## SECTION 5 — Self-Check (apply before finalizing output)
+
+1. Does the chunk *explain*, or only *list/name*? Latter → empty array.
+2. Is every question grounded in the chunk's explanatory content (not solely
+   background knowledge)?
+3. Do Q and A contain any forbidden references? → remove or discard.
+4. Does the answer restate the question without adding information? → discard.
+5. Are at least two question types represented (if ≥3 questions)?
+6. Is the difficulty distribution reasonably balanced?
+
+---
 
 **Text Chunk:**
 {text_chunk}
 
 ---
 
-**RULES:**
-
-**1. Content-Grounding**
-- Every question MUST derive from substantive technical content (definitions, derivations, examples, analysis) actually present in the chunk.
-- Do NOT generate questions from: tables of contents, headings, topic lists, index entries, references, or copyright notices.
-- **Key test:** If the chunk only *names* a topic without *explaining* it → return empty array.
-- **Exercise chunks:** Lists of task directives ("Implement X", "Show that Y", "Design Z") are NOT explanations. If the chunk is primarily exercises → return empty array. Exception: generate questions only from accompanying explanatory prose, if substantial.
-
-**2. Standalone Principle**
-Questions and answers must be fully understandable with domain knowledge alone, without the source text.
-
-**FORBIDDEN references (in both Q and A — any occurrence → invalid):**
-- "the text/author/passage/chapter/book"
-- "Figure/Table/Diagram/Section/Chapter [number]"
-- "as shown/described/illustrated in", "the example above", "the circuit in Figure"
-
-The topic and depth come from the chunk; the phrasing must be self-contained.
-
-**3. Difficulty Tiers**
-- **easy:** Define a concept or recall a key property.
-  *"What is the difference between a latch and a flip-flop?"*
-- **medium:** Apply a concept, compare alternatives, or explain *why* something works.
-  *"Why is dynamic power in CMOS proportional to switching frequency and V_DD²?"*
-- **hard:** Multi-step reasoning, design/optimization, or cross-concept synthesis.
-  *"Design a minimal two-level SOP for F(A,B,C) = Σm(1,2,5,6) using a K-map, and state the literal count."*
-
-**4. Quality Requirements**
-- **No duplicates:** Each question must test a distinct concept. Fewer questions > semantic duplicates.
-- **Answer quality:** Technically correct, self-contained, concise but complete (2–6 sentences). Show key intermediate steps for derivations. Must provide concrete information beyond what the question states (no tautological answers).
-
-**5. Forbidden Question Types**
-- Questions about the textbook itself (chapter titles, what the author says)
-- Questions dependent on figures, tables, or diagrams
-- Pure glossary lookups (unless the concept is nuanced)
-- Yes/No without justification
-- Questions on topics merely *named* but not *explained* in the chunk
-
-**6. Skip Noise**
-Return empty array if the chunk is:
-- Table of contents, index, references, copyright, or preface without technical content
-- Primarily topic names/headings without substantive explanation
-- Primarily an exercise/problem list without explanatory prose
-- Insufficient technical depth for any question
-- **When in doubt → empty array.**
-
----
-
-**Self-Check Before Generating:**
-1. Does this chunk *explain* something, or merely *list/name* topics? Latter → empty array.
-2. Is it primarily an exercise list without explanatory prose? → empty array.
-3. For each question: is the explanation in the chunk, or am I drawing on outside knowledge only? Outside only → skip.
-4. Any Figure/Table/Section/Chapter reference in Q or A? → remove or discard.
-5. Does any answer merely restate the question? → discard.
-
-**Output Format (JSON):**
+**Output Format (JSON only — no prose outside the JSON):**
 {{
   "questions": []
 }}
-OR (1–{max_questions} questions if valid content exists):
+or
 {{
   "questions": [
     {{
       "difficulty": "easy|medium|hard",
-      "topic": "brief topic tag",
+      "type": "concept|causal|quantitative|transform|trace|design|optimize|trade-off|fault",
+      "topic": "brief topic tag (≤6 words)",
       "question": "...",
       "answer": "..."
     }}
@@ -138,9 +168,70 @@ OR (1–{max_questions} questions if valid content exists):
 Generate 0–{max_questions} questions now:"""
 
 
-VALIDATION_PROMPT = """You are a strict auditor for a digital logic / computer architecture / VLSI / EE-CE problem set.
+VALIDATION_PROMPT = """You are a strict but fair auditor for a digital logic /
+computer architecture / VLSI / EE-CE problem set.
 
-Evaluate whether this QA pair is suitable for teaching domain knowledge.
+Evaluate whether the QA pair below is suitable for teaching domain knowledge.
+
+---
+
+## Evaluation Criteria
+
+### C1 — Content-Grounding
+The original text must contain substantive technical explanation (definitions,
+derivations, comparisons, worked examples, analysis) directly relevant to the
+questioned concept.
+
+PASS threshold: The text provides enough explanatory content that a student
+reading only that text could meaningfully engage with the question. This does
+not require exact sentence counting — a single dense equation with surrounding
+explanation can suffice.
+
+FAIL conditions:
+- The text only names or lists the topic without explaining it.
+- The chunk is purely an exercise directive ("Implement X", "Show that Y").
+- The answer relies entirely on background knowledge with zero grounding in
+  the chunk.
+
+Note: Questions of type **transform** or **trace** often look like exercise
+directives ("Convert…", "Trace…") but are valid if the chunk explains the
+underlying concept or procedure being applied. Do not FAIL these on
+Content-Grounding solely because of their imperative phrasing.
+
+### C2 — Standalone
+Q and A must be fully understandable with domain knowledge alone.
+
+**Automatic FAIL if Q or A contains:**
+- "the text / author / passage / chapter / book"
+- "Figure / Table / Diagram / Section / Chapter [number]"
+- "as shown / described / illustrated / presented in"
+- "the example above", "the previous example", "the circuit in Figure"
+
+### C3 — Technical Correctness
+The answer must be factually accurate.
+
+- Verify any equation or Boolean identity symbolically before accepting.
+  Example check: to implement AND using NAND gates,
+  A AND B = (A NAND B) NAND (A NAND B). Verify: NAND(x,x) = NOT x, so
+  NAND(NAND(A,B), NAND(A,B)) = NOT(NAND(A,B)) = NOT(NOT(A AND B)) = A AND B. ✓
+- Any incorrect derivation, wrong Boolean identity, or erroneous numerical
+  result → FAIL.
+- Misleading simplifications that would confuse a student → FAIL.
+
+### C4 — Non-Triviality
+The question must require genuine domain reasoning beyond common sense or
+simple metadata lookup. Pure definitional questions are acceptable only if the
+definition has technical nuance.
+
+### C5 — Relevance
+The question must concern digital logic, computer architecture, VLSI, or a
+closely related EE/CS topic.
+
+### C6 — Answer Information Gain
+The answer must provide ≥1 specific technical fact not already present in the
+question. A tautological answer (one that merely echoes the question) → FAIL.
+
+---
 
 **Original Text:**
 {text_chunk}
@@ -150,51 +241,14 @@ Evaluate whether this QA pair is suitable for teaching domain knowledge.
 
 ---
 
-**Evaluation Criteria:**
+## Output Format (JSON only)
 
-**1. Content-Grounding**
-Does the original text contain **substantive technical explanation** (definitions, derivations, comparisons, worked examples, analysis) of the questioned concept?
-- Exercise directives ("Implement X", "Show that Y") are NOT explanations.
-- Headings + brief transitions without substantive content → **FAIL**.
-- A topic being well-known does not exempt it; grounding must be in *this chunk's* explanatory content.
-- **To PASS:** You must identify ≥2–3 sentences of genuine technical explanation (not task directives) supporting the question.
-
-**2. Standalone**
-Can Q and A be fully understood with domain knowledge alone, without the source text?
-
-**FAIL if either Q or A contains any of:**
-- "the text/author/passage/chapter/book"
-- "Figure/Table/Diagram/Section/Chapter [number]"
-- "as shown/described/illustrated/presented in"
-- "the example above", "the previous example", "the circuit in Figure"
-
-If understanding requires access to a specific figure, table, or textbook section → **FAIL**.
-
-**3. Technical Correctness**
-Is the answer factually accurate?
-- Apply heightened scrutiny to derivations/equations. Example: A NAND B = ((A NAND B)')' is wrong; correct AND via NAND is (A NAND B) NAND (A NAND B).
-- Wrong equation, incorrect minimization, erroneous derivation → **FAIL**.
-- Errors, misleading simplifications, hallucinated facts → **FAIL**.
-
-**4. Non-Triviality**
-Does the question require meaningful domain knowledge or reasoning?
-- Pure metadata ("What chapter covers X?") or common-sense-only questions → **FAIL**.
-
-**5. Relevance**
-Is the question about digital logic, computer architecture, VLSI, or closely related EE/CS topics?
-- Off-topic → **FAIL**.
-
-**6. Answer Completeness & Information Gain**
-- Vague or incomplete answer → **FAIL**.
-- Tautological answer that merely restates the question without adding specific technical information → **FAIL**.
-  *Bad example: Q: "What does the 74 prefix indicate?" A: "It indicates a 7400 series chip."*
-- The answer must contain ≥1 specific technical fact not already in the question.
-
----
-
-**Output Format (JSON):**
 {{
-  "reason": "Explain which criteria passed/failed. For Content-Grounding: cite specific explanatory content found (or not). For Technical Correctness of derivations: show verification. For Standalone: list any forbidden references found.",
+  "grounding_evidence": "Quote or paraphrase the specific explanatory content in the
+    text that supports this question. Write 'NONE' if absent.",
+  "correctness_check": "For any equation or derivation in the answer, show a brief
+    symbolic verification. Write 'N/A' if no derivation is present.",
+  "issues": "List any specific issues found, or 'None'.",
   "result": "PASS" or "FAIL"
 }}
 
@@ -566,7 +620,8 @@ def generate_questions_for_chunk(
         valid_questions = []
         for q in questions:
             if all(
-                k in q for k in ["difficulty", "topic", "question", "answer"]
+                k in q
+                for k in ["difficulty", "type", "topic", "question", "answer"]
             ):
                 valid_questions.append(q)
 
@@ -598,16 +653,24 @@ def validate_qa_pair(
         result = extract_json_from_response(response)
 
         # Ensure result has required fields
+        if "grounding_evidence" not in result:
+            result["grounding_evidence"] = "None"
+        if "correctness_check" not in result:
+            result["correctness_check"] = "N/A"
+        if "issues" not in result:
+            result["issues"] = "None"
         if "result" not in result:
             result["result"] = "FAIL"
-        if "reason" not in result:
-            result["reason"] = "Failed to parse validation result"
 
         return result
+
     except Exception as e:
+        print(f"Error validating QA pair: {e}")
         return {
+            "grounding_evidence": "None",
+            "correctness_check": "N/A",
+            "issues": f"Validation error: {str(e)}",
             "result": "FAIL",
-            "reason": f"Error during validation: {str(e)}",
         }
 
 
