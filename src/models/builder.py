@@ -10,10 +10,12 @@ from omegaconf import DictConfig
 
 from src.models.qwen3_model import Qwen3Model
 from src.models.qwen_vl_model import QwenVLModel
+from src.models.qwen_vl_finetuned_model import QwenVLFinetunedModel
 
 MODEL_REGISTRY = {
     "QwenVLModel": QwenVLModel,
     "Qwen3Model": Qwen3Model,
+    "QwenVLFinetunedModel": QwenVLFinetunedModel,
 }
 
 
