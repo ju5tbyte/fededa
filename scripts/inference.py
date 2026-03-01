@@ -42,7 +42,7 @@ def main():
         raise FileNotFoundError(f"Configuration file not found: {config_path}")
 
     model_cfg = OmegaConf.load(config_path)
-    if not isinstance(model_cfg, OmegaConf.DictConfig):
+    if not isinstance(model_cfg, DictConfig):
         raise ValueError("Configuration must be a dictionary.")
 
     # Build model

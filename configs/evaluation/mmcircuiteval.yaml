@@ -25,7 +25,7 @@ api:
   embedding_model: text-embedding-3-large
   llm_model: gpt-4o
 
-gpu_id: 4
+gpu_id: null
 seed: 42
 max_samples: null
 

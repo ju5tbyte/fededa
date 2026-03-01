@@ -2,21 +2,21 @@ name: QwenVLFinetunedModel
 
 params:
   # Options: Qwen/Qwen3-VL-2B-Instruct, Qwen/Qwen3-VL-4B-Instruct, Qwen/Qwen3-VL-8B-Instruct, Qwen/Qwen3-VL-32B-Instruct
-  model_name: Qwen/Qwen3-VL-2B-Instruct
+  model_name: Qwen/Qwen3-VL-8B-Instruct
 
   # Path to the LoRA finetune checkpoint directory
-  finetune_path: ./checkpoint-462
+  finetune_path: ./data/model/checkpoints_6/checkpoint-924
 
   # Options: cuda:0, cuda:1, cpu
-  device: cuda:0
+  device: cuda
 
   # Options: float16, bfloat16, float32
-  torch_dtype: float16
+  torch_dtype: bfloat16
 
   # Options: flash_attention_2, sdpa, eager
   attn_implementation: sdpa
 
-  max_new_tokens: 512
+  max_new_tokens: 2048
 
   min_pixels: 200704  # 256 * 28 * 28
   max_pixels: 1003520  # 1280 * 28 * 28
